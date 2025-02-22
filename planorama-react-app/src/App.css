@@ -1,0 +1,30 @@
+.App {
+  text-align: center;
+}
+
+body {
+  background-color: lightblue;
+}
+
+.Columns {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  text-align: center;
+  padding: 20px;
+  margin-left: 200px;
+}
+
+.Buttons {
+  padding: 8px 12px;
+  border: none;
+  background-color: hsl(211, 73%, 55%);
+  color: white;
+  cursor: pointer;
+  border-radius: 5px;
+  margin-top: 20px;
+  margin-right: 100px;
+}
+
+.Buttons:hover {
+  background-color: #52a1f5;
+}
