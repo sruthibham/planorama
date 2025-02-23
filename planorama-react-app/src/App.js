@@ -100,10 +100,10 @@ function NavigationButtons() {
   const navigate = useNavigate();
 
   return (
-    <div>
-      <button onClick={() => navigate('/')}>Tasks</button>
-      <button onClick={() => navigate('/login')}>Log In</button>
-      <button onClick={() => navigate('/createaccount')}>Create Account</button>
+    <div className="App">
+      <button className="Buttons" onClick={() => navigate('/')}>Tasks</button>
+      <button className="Buttons" onClick={() => navigate('/login')}>Log In</button>
+      <button className="Buttons" onClick={() => navigate('/createaccount')}>Create Account</button>
     </div>
   );
 }
@@ -111,12 +111,12 @@ function NavigationButtons() {
 function App() {
   return (
     <Router>
+        <NavigationButtons />
         <Routes>
           <Route path="/" element={<TaskPage />} />
           <Route path="/createaccount" element={<CreateAccountPage />} />
           <Route path="/login" element={<LogInPage />} />
         </Routes>
-        <NavigationButtons />
     </Router>
   );
 }
