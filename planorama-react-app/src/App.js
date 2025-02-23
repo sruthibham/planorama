@@ -1,9 +1,9 @@
 import './App.css';
 import { BrowserRouter as Router, Routes, Route, useNavigate } from 'react-router-dom';
+import { useState } from 'react'
 
 
 function TaskPage() {
-  console.log("This is rendered")
   return (
     <div>
     <h1 className="App">Your Tasks</h1> 
@@ -13,32 +13,98 @@ function TaskPage() {
       <h2>Deadline</h2>
             
       <div>
-        <button className="Buttons">Create task</button>
+        <button className="MakeTaskButton">Create task</button>
       </div>
   </div>
        
   </div>
   );
 }
+
 function CreateAccountPage() {
-  console.log("This is rendered2")
-  return <h1>Create Account</h1>;
+  const [username, setUsername] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+
+  const handleSubmit = () => {
+    console.log("Username:", username);
+    console.log("Email:", email)
+    console.log("Password:", password);
+  };
+
+  return (
+    <div className="LoginFields">
+    <h1>Create Account</h1>
+    <input
+      type="text"
+      placeholder="Username"
+      value={username}
+      onChange={(e) => setUsername(e.target.value)}
+      className="TextFields"
+    />
+    <input
+      type="text"
+      placeholder="Email"
+      value={email}
+      onChange={(e) => setEmail(e.target.value)}
+      className="TextFields"
+    />
+    <input
+      type="password"
+      placeholder="Password"
+      value={password}
+      onChange={(e) => setPassword(e.target.value)}
+      className="TextFields"
+    />
+    <button onClick={handleSubmit} className="Buttons">
+      Create
+    </button>
+  </div>
+  );
 }
 
 function LogInPage() {
-  console.log("This is rendered3")
-  return <h1>Log In</h1>;
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
+
+  const handleSubmit = () => {
+    console.log("Username:", username);
+    console.log("Password:", password);
+  };
+
+  return (
+    <div className="LoginFields">
+    <h1>Log In</h1>
+    <input
+      type="text"
+      placeholder="Username"
+      value={username}
+      onChange={(e) => setUsername(e.target.value)}
+      className="TextFields"
+    />
+    <input
+      type="password"
+      placeholder="Password"
+      value={password}
+      onChange={(e) => setPassword(e.target.value)}
+      className="TextFields"
+    />
+    <button onClick={handleSubmit} className="Buttons">
+      Log In
+    </button>
+  </div>
+  );
 }
 
 function NavigationButtons() {
   const navigate = useNavigate();
 
   return (
-<div>
+    <div>
       <button onClick={() => navigate('/')}>Tasks</button>
       <button onClick={() => navigate('/login')}>Log In</button>
       <button onClick={() => navigate('/createaccount')}>Create Account</button>
-</div>
+    </div>
   );
 }
 
