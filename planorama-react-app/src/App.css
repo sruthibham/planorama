@@ -14,7 +14,7 @@ body {
   margin-left: 200px;
 }
 
-.Buttons {
+.MakeTaskButton {
   padding: 8px 12px;
   border: none;
   background-color: hsl(211, 73%, 55%);
@@ -25,6 +25,36 @@ body {
   margin-right: 100px;
 }
 
+.MakeTaskButton:hover {
+  background-color: #52a1f5;
+}
+
+.Buttons {
+  padding: 8px 12px;
+  border: none;
+  background-color: hsl(211, 73%, 55%);
+  color: white;
+  cursor: pointer;
+  border-radius: 5px;
+}
+
 .Buttons:hover {
   background-color: #52a1f5;
+}
+
+.LoginFields {
+  width: 300px;
+  margin: 50px auto;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.TextFields {
+  width: 100%;
+  padding: 10px;
+  margin-bottom: 10px;
+  border: 1px solid #ccc;
+  border-radius: 5px;
 }
