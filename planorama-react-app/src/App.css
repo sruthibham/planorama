@@ -36,6 +36,7 @@ body {
   color: white;
   cursor: pointer;
   border-radius: 5px;
+  margin: 5px;
 }
 
 .Buttons:hover {
