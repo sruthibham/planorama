@@ -17,6 +17,7 @@ function TaskPage() {
   });
   const [error, setError] = useState("");
   const [warning, setWarning] = useState("");
+  const [taskWarning, setTaskWarning] = useState("");
 
   useEffect(() => {
     axios.get("http://127.0.0.1:5000/tasks")
@@ -49,7 +50,7 @@ function TaskPage() {
         setTasks([...tasks, response.data.task]);
   
         if (response.data.warning) {
-          setWarning(response.data.warning);
+          setTaskWarning(response.data.warning);
         }
   
         setNewTask({
@@ -103,6 +104,12 @@ function TaskPage() {
         ))}
       </div>
       <button className="MakeTaskButton" onClick={() => setShowModal(true)}>Create Task</button>
+
+      {taskWarning && (
+          <div className="TaskWarning">
+          <p>{taskWarning}</p>
+          <button onClick={() => setTaskWarning("")} className="CloseWarningButton">✖</button>
+          </div>)}
 
       {showModal && (
         <div className="modal-overlay" onClick={() => setShowModal(false)}>
