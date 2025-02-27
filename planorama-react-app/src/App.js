@@ -1,23 +1,148 @@
 import './App.css';
 import { BrowserRouter as Router, Routes, Route, useNavigate } from 'react-router-dom';
-import { useState } from 'react'
+import { useState, useEffect } from 'react';
+import axios from 'axios';
 
 
 function TaskPage() {
+  const [tasks, setTasks] = useState([]);
+  const [showModal, setShowModal] = useState(false);
+  const [newTask, setNewTask] = useState({
+    name: "",
+    description: "",
+    due_time: "",
+    priority: "Medium",
+    color_tag: "",
+    status: "To-Do"
+  });
+  const [error, setError] = useState("");
+  const [warning, setWarning] = useState("");
+
+  useEffect(() => {
+    axios.get("http://127.0.0.1:5000/tasks")
+      .then(response => {
+        setTasks(response.data);
+      })
+      .catch(error => console.error("Error fetching tasks:", error));
+  }, []);
+
+  const handleDelete = (taskId) => {
+    axios.delete(`http://127.0.0.1:5000/tasks/${taskId}`)
+      .then(() => {
+        setTasks(tasks.filter(task => task.id !== taskId)); // Remove task from UI
+        setWarning("");
+        setError("");
+      })
+      .catch(error => console.error("Error deleting task:", error));
+  };  
+
+  const handleChange = (e) => {
+    setNewTask({ ...newTask, [e.target.name]: e.target.value });
+  };
+
+  const handleSubmit = () => {
+    setError("");
+    setWarning("");
+  
+    axios.post("http://127.0.0.1:5000/tasks", newTask)
+      .then(response => {
+        setTasks([...tasks, response.data.task]);
+  
+        if (response.data.warning) {
+          setWarning(response.data.warning);
+        }
+  
+        setNewTask({
+          name: "",
+          description: "",
+          due_time: "",
+          priority: "Medium",
+          color_tag: "",
+          status: "To-Do"
+        });
+  
+        setShowModal(false);
+      })
+      .catch(error => {
+        if (error.response) {
+          setError(error.response.data.error);
+        } else {
+          console.error("Error creating task:", error);
+        }
+      });
+  };
+
+   const formatDate = (dateString) => {
+    if (!dateString) return "";
+    const [year, month, day] = dateString.split("-");
+    return `${month}/${day}/${year}`;
+  };
+  
   return (
     <div>
-    <h1 className="App">Your Tasks</h1> 
-    <div className="Columns" style={{ display: "flex", justifyContent: "space-between" }}>
-      <h2>Task</h2>
-      <h2>Priority</h2>
-      <h2>Deadline</h2>
-            
-      <div>
-        <button className="MakeTaskButton">Create task</button>
+      <h1 className="App">Your Tasks</h1>
+      
+      <div className="TaskTable">
+        <div className="TaskRow TaskHeader">
+          <div className="TaskCell">Task</div>
+          <div className="TaskCell">Priority</div>
+          <div className="TaskCell">Deadline</div>
+          <div className="TaskCell">Make Changes</div>
+        </div>
+
+        {tasks.map(task => (
+          <div key={task.id} className="TaskRow">
+            <div className="TaskCell">{task.name}</div>
+            <div className="TaskCell">{task.priority}</div>
+            <div className="TaskCell">{formatDate(task.due_time)}</div>
+            <div className="TaskCell">
+              <button className="EditButton">Edit</button>
+              <button className="DeleteButton" onClick={() => handleDelete(task.id)}>Delete</button>
+            </div>
+          </div>
+        ))}
       </div>
-  </div>
-       
-  </div>
+      <button className="MakeTaskButton" onClick={() => setShowModal(true)}>Create Task</button>
+
+      {showModal && (
+        <div className="modal-overlay" onClick={() => setShowModal(false)}>
+          <div className="modal" onClick={(e) => e.stopPropagation()}>
+            <h2>Create Task</h2>
+
+            {error && <p className="ErrorMessage">{error}</p>}
+            {warning && <p className="WarningMessage">{warning}</p>}
+
+            <input type="text" name="name" placeholder="Task Name" onChange={handleChange} className="TextFields" required />
+            <input type="text" name="description" placeholder="Description (Optional)" onChange={handleChange} className="TextFields" />
+            <input type="date" name="due_time" onChange={handleChange} className="TextFields" required />
+
+            <select name="priority" onChange={handleChange} className="TextFields">
+              <option value="Low">Low</option>
+              <option value="Medium" selected>Medium</option>
+              <option value="High">High</option>
+            </select>
+             
+            <select name="status" onChange={handleChange} className="TextFields">
+              <option value="To-Do">To-Do</option>
+              <option value="In Progress">In Progress</option>
+              <option value="Completed">Completed</option>
+            </select>
+
+            <button onClick={handleSubmit} className="Buttons">Save</button>
+            <button onClick={() => {
+              setError("");
+              setWarning("");
+              setNewTask({
+              name: "",
+              description: "",
+              due_time: "",
+              priority: "Medium",
+              color_tag: "",
+              status: "To-Do"});setShowModal(false);}} className="Buttons">Cancel</button>
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
 
