@@ -41,6 +41,11 @@ def get_tasks():
 def add_task():
     data = request.json
 
+    try:
+        due_date = datetime.strptime(data["due_time"], "%Y-%m-%d").date()
+    except ValueError:
+        return jsonify({"error": "Deadline is required"}), 400
+    
     if not data.get("name"):
         return jsonify({"error": "Task name is required"}), 400
     if not data.get("due_time"):
