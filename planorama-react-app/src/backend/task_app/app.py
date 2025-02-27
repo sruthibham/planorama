@@ -46,11 +46,16 @@ def add_task():
     if not data.get("due_time"):
         return jsonify({"error": "Deadline is required"}), 400
 
-    # Validate Priority and Status
     if data["priority"] not in PRIORITY_OPTIONS:
         return jsonify({"error": f"Invalid priority. Must be one of {PRIORITY_OPTIONS}"}), 400
     if data["status"] not in STATUS_OPTIONS:
         return jsonify({"error": f"Invalid status. Must be one of {STATUS_OPTIONS}"}), 400
+
+    existing_task = Task.query.filter_by(name=data["name"], due_time=str(due_date)).first()
+    if existing_task:
+        warning = "Duplicate task detected, but added successfully."
+    else:
+        warning = None
 
     new_task = Task(
         name=data["name"],
@@ -62,7 +67,7 @@ def add_task():
     )
     db.session.add(new_task)
     db.session.commit()
-    return jsonify({"message": "Task added successfully!", "task": {
+    return jsonify({"message": "Task added successfully!", "warning": warning, task": {
         "id": new_task.id,
         "name": new_task.name,
         "description": new_task.description,
