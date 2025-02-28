@@ -158,9 +158,11 @@ function CreateAccountPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
+  const [errMsg, setErrMsg] = useState(null);
+
   const handleSubmit = () => {
     axios.post("http://127.0.0.1:5000/createuser", { username: username, email: email, password: password })
-      .then(response => console.log(response.data));
+      .then(response => setErrMsg(response.data));
   };
 
   return (
@@ -190,6 +192,15 @@ function CreateAccountPage() {
     <button onClick={handleSubmit} className="Buttons">
       Create
     </button>
+    <div>
+      {errMsg[0]}
+    </div>
+    <div>
+      {errMsg[1]}
+    </div>
+    <div>
+      {errMsg[2]}
+    </div>
   </div>
   );
 }
@@ -198,9 +209,11 @@ function LogInPage() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
 
+  const [errMsg, setErrMsg] = useState(null);
+
   const handleSubmit = () => {
     axios.post("http://127.0.0.1:5000/loguser", { username: username, password: password })
-      .then(response => console.log(response.data));
+      .then(response => setErrMsg(response.data));
   };
 
   return (
@@ -223,6 +236,9 @@ function LogInPage() {
     <button onClick={handleSubmit} className="Buttons">
       Log In
     </button>
+    <div>
+      {errMsg}
+    </div>
   </div>
   );
 }

@@ -16,22 +16,35 @@ Create account:
 @app.route("/createuser", methods=["POST"])
 def create_acc():
     data = request.json  # Get JSON data sent from Axios
+
     username=data.get("username")
     email=data.get("email")
     password=data.get("password")
-    print(user_info.keys())
+
+    errors=[]
+    validEmail=1
+    # Check if email is valid
+    if ("@" not in email or "." not in email):
+        validEmail=0
+        errors.append("Use a valid email")
+
     # Check is email already in use
     for u, ep in user_info.items():
         print("email: " + ep[0])
         if (ep[0] == email):
-            return jsonify("Email already in use")
+            errors.append("Email already in use\n")
+            validEmail=0
+            break
     # Check if username is already in use
     if (username not in user_info):
-        # Successfully create user
-        user_info[username] = (email, password)
-        return jsonify("added user: " + username + ", " + user_info[username][0] + ", " + user_info[username][1])
+        if (validEmail==1):
+            # Successfully create user
+            user_info[username] = (email, password)
+            response=["Added user: " + username + ", " + user_info[username][0] + ", " + user_info[username][1]]
+            return jsonify(response)
     else:
-        return jsonify("Username taken")
+        errors.append("Username taken")
+    return jsonify(errors)
 
 
 
