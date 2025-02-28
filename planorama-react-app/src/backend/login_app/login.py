@@ -1,5 +1,6 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
+import re # Regex for password checking
 
 app = Flask(__name__)
 CORS(app)
@@ -28,16 +29,34 @@ def create_acc():
         validEmail=0
         errors.append("Use a valid email")
 
-    # Check is email already in use
+    # Check if email already in use
     for u, ep in user_info.items():
         print("email: " + ep[0])
         if (ep[0] == email):
             errors.append("Email already in use\n")
             validEmail=0
             break
+
+    # Check if password is sufficiently strong
+    validPass=1
+    if (not (len(password) < 32 and len(password) > 8)):
+        errors.append("Password too short")
+        validPass=0
+    if (not (re.search(r"[A-Z]", password) and re.search(r"[a-z]", password))):
+        errors.append("Password requires at least one uppercase and lowercase letter")
+        validPass=0
+    if (not re.search(r"\d", password)):
+        errors.append("Password requires at least one number")
+        validPass=0
+    if (not re.search(r"[!@#$%^&*?]", password)):
+        errors.append("Password requires at least one special character (!@#$%^&*)")
+        validPass=0
+            
+
+
     # Check if username is already in use
     if (username not in user_info):
-        if (validEmail==1):
+        if (validEmail==1 and validPass==1):
             # Successfully create user
             user_info[username] = (email, password)
             response=["Added user: " + username + ", " + user_info[username][0] + ", " + user_info[username][1]]

@@ -158,7 +158,7 @@ function CreateAccountPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
-  const [errMsg, setErrMsg] = useState(null);
+  const [errMsg, setErrMsg] = useState([]);
 
   const handleSubmit = () => {
     axios.post("http://127.0.0.1:5000/createuser", { username: username, email: email, password: password })
@@ -193,14 +193,13 @@ function CreateAccountPage() {
       Create
     </button>
     <div>
-      {errMsg[0]}
+      <ul>
+        {errMsg.map((errMsg, index) => (
+          <li key={index}>{errMsg}</li>
+        ))}
+      </ul>
     </div>
-    <div>
-      {errMsg[1]}
-    </div>
-    <div>
-      {errMsg[2]}
-    </div>
+    
   </div>
   );
 }
