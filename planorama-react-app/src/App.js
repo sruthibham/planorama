@@ -159,9 +159,8 @@ function CreateAccountPage() {
   const [password, setPassword] = useState("");
 
   const handleSubmit = () => {
-    console.log("Username:", username);
-    console.log("Email:", email)
-    console.log("Password:", password);
+    axios.post("http://127.0.0.1:5000/createuser", { username: username, email: email, password: password })
+      .then(response => console.log(response.data));
   };
 
   return (
@@ -200,8 +199,8 @@ function LogInPage() {
   const [password, setPassword] = useState("");
 
   const handleSubmit = () => {
-    console.log("Username:", username);
-    console.log("Password:", password);
+    axios.post("http://127.0.0.1:5000/loguser", { username: username, password: password })
+      .then(response => console.log(response.data));
   };
 
   return (
