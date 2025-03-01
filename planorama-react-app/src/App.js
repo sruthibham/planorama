@@ -1,4 +1,5 @@
 import './App.css';
+import ProfilePage from './ProfilePage';
 import { BrowserRouter as Router, Routes, Route, useNavigate } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import { GlobalProvider, useGlobal } from "./GlobalContext";
@@ -270,6 +271,9 @@ function NavigationButtons() {
       <button className="Buttons" onClick={() => navigate('/')}>Tasks</button>
       <button className="Buttons" onClick={() => navigate('/login')}>Log In</button>
       <button className="Buttons" onClick={() => navigate('/createaccount')}>Create Account</button>
+      <button className="ProfileIcon" onClick={() => navigate('/profile')}>
+        <img src="/default-profile.png" alt="Profile" className="ProfileIconImage" />
+      </button>
     </div>
   );
 }
@@ -285,9 +289,11 @@ function App() {
             <Route path="/" element={<TaskPage />} />
             <Route path="/createaccount" element={<CreateAccountPage />} />
             <Route path="/login" element={<LogInPage />} />
+            <Route path="/profile" element={<ProfilePage />} />
           </Routes>
         </GlobalProvider>
     </Router>
   );
 }
+
 export default App;
