@@ -2,6 +2,7 @@ from datetime import datetime
 from flask import Flask, request, jsonify
 from flask_sqlalchemy import SQLAlchemy
 from flask_cors import CORS
+import os
 
 app = Flask(__name__)
 CORS(app)
@@ -74,7 +75,7 @@ def add_task():
     )
     db.session.add(new_task)
     db.session.commit()
-    return jsonify({"message": "Task added successfully!", "warning": warning, task": {
+    return jsonify({"message": "Task added successfully!", "warning": warning, "task": {
         "id": new_task.id,
         "name": new_task.name,
         "description": new_task.description,
