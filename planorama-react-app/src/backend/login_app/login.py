@@ -31,7 +31,6 @@ def create_acc():
 
     # Check if email already in use
     for u, ep in user_info.items():
-        print("email: " + ep[0])
         if (ep[0] == email):
             errors.append("Email already in use\n")
             validEmail=0
