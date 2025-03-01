@@ -25,7 +25,7 @@ def create_acc():
     errors=[]
     validEmail=1
     # Check if email is valid
-    if ("@" not in email or "." not in email):
+    if ("@" not in email or "." not in email or len(email) < 5):
         validEmail=0
         errors.append("Use a valid email")
 
@@ -38,8 +38,8 @@ def create_acc():
 
     # Check if password is sufficiently strong
     validPass=1
-    if (not (len(password) < 32 and len(password) > 8)):
-        errors.append("Password too short")
+    if (not (len(password) < 32 and len(password) >= 8)):
+        errors.append("Password must be between 8 and 32 characters")
         validPass=0
     if (not (re.search(r"[A-Z]", password) and re.search(r"[a-z]", password))):
         errors.append("Password requires at least one uppercase and lowercase letter")
@@ -51,18 +51,19 @@ def create_acc():
         errors.append("Password requires at least one special character (!@#$%^&*)")
         validPass=0
             
-
-
     # Check if username is already in use
+    if (len(username) < 4):
+        errors.append("Username too short")
     if (username not in user_info):
         if (validEmail==1 and validPass==1):
             # Successfully create user
             user_info[username] = (email, password)
-            response=["Added user: " + username + ", " + user_info[username][0] + ", " + user_info[username][1]]
-            return jsonify(response)
+            response=["Account created!"]
+            return jsonify({"success": True, "msg": response})
+
     else:
         errors.append("Username taken")
-    return jsonify(errors)
+    return jsonify({"success": False, "msg": errors})
 
 
 
@@ -77,11 +78,16 @@ Log in:
 '''
 @app.route("/loguser", methods=["POST"])
 def log_in():
-    data = request.json  # Get JSON data sent from Axios
+    data = request.json
+    username=data.get("username")
+    password=data.get("password")
 
+    # Check if login is correct
+    if (username in user_info and user_info[username][1]==password):
+        return jsonify({"success": True, "msg": "Logged in!"})
+    else:
+        return jsonify({"success": False, "msg": "Incorrect username or password."})
 
-
-    return jsonify({"login received": data})
 
 '''
 Delete account:

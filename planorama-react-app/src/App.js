@@ -1,8 +1,14 @@
 import './App.css';
 import { BrowserRouter as Router, Routes, Route, useNavigate } from 'react-router-dom';
 import { useState, useEffect } from 'react';
+import { GlobalProvider, useGlobal } from "./GlobalContext";
 import axios from 'axios';
 
+
+function DisplayUsername() {
+  const { user } = useGlobal();
+  return <div className="User">{user}</div>;
+}
 
 function TaskPage() {
   const [tasks, setTasks] = useState([]);
@@ -160,9 +166,16 @@ function CreateAccountPage() {
 
   const [errMsg, setErrMsg] = useState([]);
 
+  const { setUser } = useGlobal();
+
   const handleSubmit = () => {
     axios.post("http://127.0.0.1:5000/createuser", { username: username, email: email, password: password })
-      .then(response => setErrMsg(response.data));
+    .then(response => {
+      setErrMsg(response.data.msg)
+      if (response.data.success) {
+        setUser(username);  // Update global state
+      }
+    });
   };
 
   return (
@@ -210,9 +223,16 @@ function LogInPage() {
 
   const [errMsg, setErrMsg] = useState(null);
 
+  const { setUser } = useGlobal();
+
   const handleSubmit = () => {
     axios.post("http://127.0.0.1:5000/loguser", { username: username, password: password })
-      .then(response => setErrMsg(response.data));
+    .then(response => {
+      setErrMsg(response.data.msg)
+      if (response.data.success) {
+        setUser(username);  // Update global state
+      }
+    });
   };
 
   return (
@@ -257,12 +277,16 @@ function NavigationButtons() {
 function App() {
   return (
     <Router>
+        <GlobalProvider>
         <NavigationButtons />
-        <Routes>
-          <Route path="/" element={<TaskPage />} />
-          <Route path="/createaccount" element={<CreateAccountPage />} />
-          <Route path="/login" element={<LogInPage />} />
-        </Routes>
+        
+          <DisplayUsername />
+          <Routes>
+            <Route path="/" element={<TaskPage />} />
+            <Route path="/createaccount" element={<CreateAccountPage />} />
+            <Route path="/login" element={<LogInPage />} />
+          </Routes>
+        </GlobalProvider>
     </Router>
   );
 }

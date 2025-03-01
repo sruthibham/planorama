@@ -99,7 +99,7 @@ body {
 }
 
 .LoginFields {
-  width: 300px;
+  width: 400px;
   margin: 50px auto;
   padding: 20px;
   display: flex;
@@ -153,3 +153,12 @@ body {
   color: #704c04;
 }
 
+.User {
+  position: absolute;
+  top: -5px;
+  right: -5px; 
+  background-color: rgb(47, 47, 88);
+  color: white;
+  padding: 10px;
+  border-radius: 5px;
+}
