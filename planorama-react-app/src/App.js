@@ -1,8 +1,14 @@
 import './App.css';
 import { BrowserRouter as Router, Routes, Route, useNavigate } from 'react-router-dom';
 import { useState, useEffect } from 'react';
+import { GlobalProvider, useGlobal } from "./GlobalContext";
 import axios from 'axios';
 
+
+function DisplayUsername() {
+  const { user } = useGlobal();
+  return <div className="User">{user}</div>;
+}
 
 function TaskPage() {
   const [tasks, setTasks] = useState([]);
@@ -158,10 +164,18 @@ function CreateAccountPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
+  const [errMsg, setErrMsg] = useState([]);
+
+  const { setUser } = useGlobal();
+
   const handleSubmit = () => {
-    console.log("Username:", username);
-    console.log("Email:", email)
-    console.log("Password:", password);
+    axios.post("http://127.0.0.1:5000/createuser", { username: username, email: email, password: password })
+    .then(response => {
+      setErrMsg(response.data.msg)
+      if (response.data.success) {
+        setUser(username);  // Update global state
+      }
+    });
   };
 
   return (
@@ -191,6 +205,14 @@ function CreateAccountPage() {
     <button onClick={handleSubmit} className="Buttons">
       Create
     </button>
+    <div>
+      <ul>
+        {errMsg.map((errMsg, index) => (
+          <li key={index}>{errMsg}</li>
+        ))}
+      </ul>
+    </div>
+    
   </div>
   );
 }
@@ -199,9 +221,18 @@ function LogInPage() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
 
+  const [errMsg, setErrMsg] = useState(null);
+
+  const { setUser } = useGlobal();
+
   const handleSubmit = () => {
-    console.log("Username:", username);
-    console.log("Password:", password);
+    axios.post("http://127.0.0.1:5000/loguser", { username: username, password: password })
+    .then(response => {
+      setErrMsg(response.data.msg)
+      if (response.data.success) {
+        setUser(username);  // Update global state
+      }
+    });
   };
 
   return (
@@ -224,6 +255,9 @@ function LogInPage() {
     <button onClick={handleSubmit} className="Buttons">
       Log In
     </button>
+    <div>
+      {errMsg}
+    </div>
   </div>
   );
 }
@@ -243,12 +277,16 @@ function NavigationButtons() {
 function App() {
   return (
     <Router>
+        <GlobalProvider>
         <NavigationButtons />
-        <Routes>
-          <Route path="/" element={<TaskPage />} />
-          <Route path="/createaccount" element={<CreateAccountPage />} />
-          <Route path="/login" element={<LogInPage />} />
-        </Routes>
+        
+          <DisplayUsername />
+          <Routes>
+            <Route path="/" element={<TaskPage />} />
+            <Route path="/createaccount" element={<CreateAccountPage />} />
+            <Route path="/login" element={<LogInPage />} />
+          </Routes>
+        </GlobalProvider>
     </Router>
   );
 }
