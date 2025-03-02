@@ -155,8 +155,8 @@ body {
 
 .User {
   position: absolute;
-  top: 0px;
-  right: 0px; 
+  top: -5px;
+  right: -5px; 
   background-color: white;
   color: white;
   padding: 10px;
