@@ -22,6 +22,9 @@ function TaskPage() {
     color_tag: "",
     status: "To-Do"
   });
+  //for filtering by priority
+  const [filterPriority, setFilteredPriority] = useState(["None"]);
+  const [filterStatus, setFilteredStatus] = useState(["None"]);
   const [error, setError] = useState("");
   const [warning, setWarning] = useState("");
   const [taskWarning, setTaskWarning] = useState("");
@@ -85,6 +88,32 @@ function TaskPage() {
     const [year, month, day] = dateString.split("-");
     return `${month}/${day}/${year}`;
   };
+
+  let filteredTasks = tasks
+
+  if (filterPriority !== "None") {
+    filteredTasks = filteredTasks.filter((task) => 
+      task.priority === filterPriority
+    );
+  }
+
+  if (filterStatus !== "None") {
+    filteredTasks = filteredTasks.filter((task) => 
+      task.status === filterStatus
+    );
+  }
+
+  /*
+  const filteredTasks = tasks.filter((task) => {
+    //shows all tasks if no filter
+    if (filterPriority !== "None") {
+      return true;
+    }
+      //shows specific filter if not none
+      return task.priority === filterPriority;
+    }
+  );
+  */
   
   return (
     <div>
@@ -92,16 +121,39 @@ function TaskPage() {
       
       <div className="TaskTable">
         <div className="TaskRow TaskHeader">
+          <label>
+            Filter:  
+            
+          </label>
           <div className="TaskCell">Task</div>
-          <div className="TaskCell">Priority</div>
+          <div className="TaskCell">
+            Priority:
+            <select value={filterPriority} onChange={(e) => setFilteredPriority(e.target.value)}>
+              <option value="None">None</option>
+              <option value="Low">Low</option>
+              <option value="Medium">Medium</option>
+              <option value="High">High</option>
+            </select>
+          </div>
+          <div className="TaskCell">
+            Status:
+            <select value={filterStatus} onChange={(e) => setFilteredStatus(e.target.value)}>
+              <option value="None">None</option>
+              <option value="To-Do">To-Do</option>
+              <option value="In Progress">In Progress</option>
+              <option value="Completed">Completed</option>
+            </select>
+          </div>
           <div className="TaskCell">Deadline</div>
           <div className="TaskCell">Make Changes</div>
         </div>
 
-        {tasks.map(task => (
+        {filteredTasks.map(task => (
           <div key={task.id} className="TaskRow">
+            <div className="Task">{}</div>
             <div className="TaskCell">{task.name}</div>
             <div className="TaskCell">{task.priority}</div>
+            <div className="TaskCell">{task.status}</div>
             <div className="TaskCell">{formatDate(task.due_time)}</div>
             <div className="TaskCell">
               <button className="EditButton">Edit</button>
