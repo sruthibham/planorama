@@ -69,6 +69,34 @@ body {
   background-color: #c0392b;
 }
 
+.ConfirmButton {
+  padding: 5px 10px;
+  border: none;
+  background-color: #53e73c;
+  color: white;
+  cursor: pointer;
+  border-radius: 5px;
+  margin: 5px;
+}
+
+.ConfirmButton:hover {
+  background-color: #2bc03f;
+}
+
+.UndoButton {
+  padding: 5px 10px;
+  border: none;
+  background-color: #3c6fe7;
+  color: white;
+  cursor: pointer;
+  border-radius: 5px;
+  margin: 5px;
+}
+
+.UndoButton:hover {
+  background-color: #2b44c0;
+}
+
 .MakeTaskButton {
   display: block;
   margin: 20px auto;

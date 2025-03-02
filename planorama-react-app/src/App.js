@@ -8,32 +8,7 @@ import axios from 'axios';
 
 function DisplayUsername() {
   const { user } = useGlobal();
-  const [showExtraButtons, setShowExtraButtons] = useState(false);
-
-  const handleClick = () => {
-    if (showExtraButtons==false) {
-      setShowExtraButtons(true);
-    } else {
-      setShowExtraButtons(false)
-    }
-    
-  };
-  const navigate = useNavigate();
-
-  return (
-    <div className="User" style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
-      <button className="TransparentButton" onClick={handleClick}>{user}</button>
-      {showExtraButtons && (
-        <div style={{ marginTop: "5px", display: "flex", flexDirection: "column", gap: "2px" }}>
-          <button className="Buttons" onClick={() => navigate('/login')}>Log In</button>
-          <button className="Buttons" onClick={() => navigate('/createaccount')}>Create Account</button>
-          <button className="Buttons" onClick={() => navigate('/profile')}>
-            <img src="/default-profile.png" alt="Profile" className="ProfileIconImage" />
-          </button>
-        </div>
-      )}
-    </div>
-  )
+  return <div className="User">{user}</div>;
 }
 
 function TaskPage() {
@@ -50,6 +25,8 @@ function TaskPage() {
   //for filtering by priority
   const [filterPriority, setFilteredPriority] = useState(["None"]);
   const [filterStatus, setFilteredStatus] = useState(["None"]);
+  //for deletions that haven't been decided yet
+  const [pendingDelete, setPendingDelete] = useState([null]);
   const [error, setError] = useState("");
   const [warning, setWarning] = useState("");
   const [taskWarning, setTaskWarning] = useState("");
@@ -62,7 +39,14 @@ function TaskPage() {
       .catch(error => console.error("Error fetching tasks:", error));
   }, []);
 
-  const handleDelete = (taskId) => {
+
+  //changes state of pending to current task
+  const handleDeleteClick = (taskId) => {
+    setPendingDelete(taskId);
+  };
+
+  //officially deletes tasks
+  const handleDeleteConfirm = (taskId) => {
     axios.delete(`http://127.0.0.1:5000/tasks/${taskId}`)
       .then(() => {
         setTasks(tasks.filter(task => task.id !== taskId)); // Remove task from UI
@@ -70,6 +54,32 @@ function TaskPage() {
         setError("");
       })
       .catch(error => console.error("Error deleting task:", error));
+  };
+  
+  //Resets pending back to null and resores edit/delete buttons
+  const handleDeleteUndo = (taskId) => {
+    setPendingDelete(null);
+  };  
+
+  // buttons to show delete/edit or confirm/undo
+  const deleteButtons = (taskId) => {
+    if (pendingDelete === taskId) {
+      return (
+        <div>
+        <button className="ConfirmButton" onClick={() => handleDeleteConfirm(taskId)}>Confirm</button>
+        <button className="UndoButton" onClick={() => handleDeleteUndo(taskId)}>Undo</button>
+        </div>
+      )
+    }
+    else {
+      return (
+        <div>
+        <button className="EditButton">Edit</button>
+        <button className="DeleteButton" onClick={() => handleDeleteClick(taskId)}>Delete</button>
+        </div>
+      )
+    }
+    
   };  
 
   const handleChange = (e) => {
@@ -114,31 +124,22 @@ function TaskPage() {
     return `${month}/${day}/${year}`;
   };
 
+  //sets tasks to all tasks
   let filteredTasks = tasks
 
+  //checks if priority is filtered
   if (filterPriority !== "None") {
     filteredTasks = filteredTasks.filter((task) => 
       task.priority === filterPriority
     );
   }
 
+  //checks if status is filtered
   if (filterStatus !== "None") {
     filteredTasks = filteredTasks.filter((task) => 
       task.status === filterStatus
     );
   }
-
-  /*
-  const filteredTasks = tasks.filter((task) => {
-    //shows all tasks if no filter
-    if (filterPriority !== "None") {
-      return true;
-    }
-      //shows specific filter if not none
-      return task.priority === filterPriority;
-    }
-  );
-  */
   
   return (
     <div>
@@ -148,7 +149,6 @@ function TaskPage() {
         <div className="TaskRow TaskHeader">
           <label>
             Filter:  
-            
           </label>
           <div className="TaskCell">Task</div>
           <div className="TaskCell">
@@ -181,8 +181,7 @@ function TaskPage() {
             <div className="TaskCell">{task.status}</div>
             <div className="TaskCell">{formatDate(task.due_time)}</div>
             <div className="TaskCell">
-              <button className="EditButton">Edit</button>
-              <button className="DeleteButton" onClick={() => handleDelete(task.id)}>Delete</button>
+              {deleteButtons(task.id)}
             </div>
           </div>
         ))}
@@ -346,11 +345,11 @@ function NavigationButtons() {
   return (
     <div className="App">
       <button className="Buttons" onClick={() => navigate('/')}>Tasks</button>
-      {/* <button className="Buttons" onClick={() => navigate('/login')}>Log In</button>
+      <button className="Buttons" onClick={() => navigate('/login')}>Log In</button>
       <button className="Buttons" onClick={() => navigate('/createaccount')}>Create Account</button>
       <button className="ProfileIcon" onClick={() => navigate('/profile')}>
         <img src="/default-profile.png" alt="Profile" className="ProfileIconImage" />
-      </button> */}
+      </button>
     </div>
   );
 }
