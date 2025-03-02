@@ -8,16 +8,30 @@ import axios from 'axios';
 
 function DisplayUsername() {
   const { user } = useGlobal();
+  const { setUser } = useGlobal();
   const [showExtraButtons, setShowExtraButtons] = useState(false);
+  const [showLogoutButton, setShowLogoutButton] = useState(false);
+
+  useEffect(() => {
+    if (user !== "Guest") {
+      setShowLogoutButton(true);
+    } else {
+      setShowLogoutButton(false);
+    }
+  }, [user]);
 
   const handleClick = () => {
     if (showExtraButtons==false) {
       setShowExtraButtons(true);
     } else {
-      setShowExtraButtons(false)
+      setShowExtraButtons(false);
     }
-    
   };
+
+  const handleLogout = () => {
+    setUser("Guest")
+  }
+
   const navigate = useNavigate();
 
   return (
@@ -25,11 +39,22 @@ function DisplayUsername() {
       <button className="TransparentButton" onClick={handleClick}>{user}</button>
       {showExtraButtons && (
         <div style={{ marginTop: "5px", display: "flex", flexDirection: "column", gap: "2px" }}>
-          <button className="Buttons" onClick={() => navigate('/login')}>Log In</button>
-          <button className="Buttons" onClick={() => navigate('/createaccount')}>Create Account</button>
-          <button className="Buttons" onClick={() => navigate('/profile')}>
-            <img src="/default-profile.png" alt="Profile" className="ProfileIconImage" />
-          </button>
+          {!showLogoutButton && (
+            <>
+              <button className="Buttons" onClick={() => navigate('/login')}>Log In</button>
+              <button className="Buttons" onClick={() => navigate('/createaccount')}>Create Account</button>
+            </>
+          )}
+          {showLogoutButton && (
+            <>
+              <button className="Buttons" onClick={() => navigate('/profile')}>
+                <img src="/default-profile.png" alt="Profile" className="ProfileIconImage" />
+              </button>
+              <button className="Buttons" onClick={handleLogout}>Log Out</button>
+            </>
+          )
+          }
+          
         </div>
       )}
     </div>
@@ -194,12 +219,15 @@ function CreateAccountPage() {
 
   const { setUser } = useGlobal();
 
+  const navigate = useNavigate();
+
   const handleSubmit = () => {
     axios.post("http://127.0.0.1:5000/createuser", { username: username, email: email, password: password })
     .then(response => {
       setErrMsg(response.data.msg)
       if (response.data.success) {
         setUser(username);  // Update global state
+        navigate("/")
       }
     });
   };
@@ -251,12 +279,15 @@ function LogInPage() {
 
   const { setUser } = useGlobal();
 
+  const navigate = useNavigate();
+
   const handleSubmit = () => {
     axios.post("http://127.0.0.1:5000/loguser", { username: username, password: password })
     .then(response => {
       setErrMsg(response.data.msg)
       if (response.data.success) {
         setUser(username);  // Update global state
+        navigate("/")
       }
     });
   };
