@@ -8,7 +8,32 @@ import axios from 'axios';
 
 function DisplayUsername() {
   const { user } = useGlobal();
-  return <div className="User">{user}</div>;
+  const [showExtraButtons, setShowExtraButtons] = useState(false);
+
+  const handleClick = () => {
+    if (showExtraButtons==false) {
+      setShowExtraButtons(true);
+    } else {
+      setShowExtraButtons(false)
+    }
+    
+  };
+  const navigate = useNavigate();
+
+  return (
+    <div className="User" style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
+      <button className="TransparentButton" onClick={handleClick}>{user}</button>
+      {showExtraButtons && (
+        <div style={{ marginTop: "5px", display: "flex", flexDirection: "column", gap: "2px" }}>
+          <button className="Buttons" onClick={() => navigate('/login')}>Log In</button>
+          <button className="Buttons" onClick={() => navigate('/createaccount')}>Create Account</button>
+          <button className="Buttons" onClick={() => navigate('/profile')}>
+            <img src="/default-profile.png" alt="Profile" className="ProfileIconImage" />
+          </button>
+        </div>
+      )}
+    </div>
+  )
 }
 
 function TaskPage() {
@@ -269,11 +294,11 @@ function NavigationButtons() {
   return (
     <div className="App">
       <button className="Buttons" onClick={() => navigate('/')}>Tasks</button>
-      <button className="Buttons" onClick={() => navigate('/login')}>Log In</button>
+      {/* <button className="Buttons" onClick={() => navigate('/login')}>Log In</button>
       <button className="Buttons" onClick={() => navigate('/createaccount')}>Create Account</button>
       <button className="ProfileIcon" onClick={() => navigate('/profile')}>
         <img src="/default-profile.png" alt="Profile" className="ProfileIconImage" />
-      </button>
+      </button> */}
     </div>
   );
 }
