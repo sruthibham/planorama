@@ -52,10 +52,15 @@ def create_acc():
         validPass=0
             
     # Check if username is already in use
+    validUser=1
     if (len(username) < 4):
         errors.append("Username too short")
+        validUser=0
+    if (username=="Guest"):
+        errors.append("Username cannot be \"Guest\"")
+        validUser=0
     if (username not in user_info):
-        if (validEmail==1 and validPass==1):
+        if (validEmail==1 and validPass==1 and validUser==1):
             # Successfully create user
             user_info[username] = (email, password)
             response=["Account created!"]
@@ -100,6 +105,15 @@ def delete_acc():
     return jsonify({"delete received": data})
 
 
+'''
+Log out:
+ - Change user back to 'Guest'
+ - Guests cannot make tasks
+'''
+@app.route("/logout", methods=["POST"])
+def log_out():
+    data = request.json
+    return jsonify({"logout recieved": data})
 
 if __name__ == "__main__":
     app.run(debug=True)
