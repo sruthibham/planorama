@@ -11,7 +11,9 @@ from flask_cors import CORS
 app = Flask(__name__)
 CORS(app)
 
-# APP.PY --------------------------
+currentUser=""
+
+# APP.PY (tasks) --------------------------
 
 db_path = os.path.join(os.path.dirname(os.path.abspath(__file__)),"tasks.db")
 app.config["SQLALCHEMY_DATABASE_URI"] = f"sqlite:///{db_path}"
