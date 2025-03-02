@@ -272,6 +272,50 @@ def uploaded_file(filename):
     return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
 
 
+# SETTINGS.PY ------------------------------------
+
+class UserSettings(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, unique=True, nullable=False)  # Unique settings per user
+    dark_mode = db.Column(db.Boolean, default=False)
+    theme = db.Column(db.String(20), default="light")
+    text_size = db.Column(db.String(10), default="medium")
+
+with app.app_context():
+    db.create_all()
+
+@app.route("/get_settings/<int:user_id>", methods=["GET"])
+def get_settings(user_id):
+    settings = UserSettings.query.filter_by(user_id=user_id).first()
+    if settings:
+        return jsonify({
+            "dark_mode": settings.dark_mode,
+            "theme": settings.theme,
+            "text_size": settings.text_size
+        })
+    else:
+        return jsonify({"error": "Settings not found"}), 404
+
+@app.route("/update_settings/<int:user_id>", methods=["POST"])
+def update_settings(user_id):
+    data = request.json
+    settings = UserSettings.query.filter_by(user_id=user_id).first()
+
+    if settings:
+        settings.dark_mode = data.get("dark_mode", settings.dark_mode)
+        settings.theme = data.get("theme", settings.theme)
+        settings.text_size = data.get("text_size", settings.text_size)
+    else:
+        settings = UserSettings(
+            user_id=user_id,
+            dark_mode=data.get("dark_mode", False),
+            theme=data.get("theme", "light"),
+            text_size=data.get("text_size", "medium")
+        )
+        db.session.add(settings)
+
+    db.session.commit()
+    return jsonify({"message": "Settings updated successfully"}), 200
 
 
 
@@ -279,3 +323,5 @@ def uploaded_file(filename):
 
 if __name__ == "__main__":
     app.run(debug=True)
+
+

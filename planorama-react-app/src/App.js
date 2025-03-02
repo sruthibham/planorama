@@ -1,5 +1,6 @@
 import './App.css';
 import ProfilePage from './ProfilePage';
+import SettingsPage from './SettingsPage';
 import { BrowserRouter as Router, Routes, Route, useNavigate } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import { GlobalProvider, useGlobal } from "./GlobalContext";
@@ -72,6 +73,11 @@ function TaskPage() {
     color_tag: "",
     status: "To-Do"
   });
+  //for filtering by priority
+  const [filterPriority, setFilteredPriority] = useState(["None"]);
+  const [filterStatus, setFilteredStatus] = useState(["None"]);
+  //for deletions that haven't been decided yet
+  const [pendingDelete, setPendingDelete] = useState([null]);
   const [error, setError] = useState("");
   const [warning, setWarning] = useState("");
   const [taskWarning, setTaskWarning] = useState("");
@@ -84,7 +90,14 @@ function TaskPage() {
       .catch(error => console.error("Error fetching tasks:", error));
   }, []);
 
-  const handleDelete = (taskId) => {
+
+  //changes state of pending to current task
+  const handleDeleteClick = (taskId) => {
+    setPendingDelete(taskId);
+  };
+
+  //officially deletes tasks
+  const handleDeleteConfirm = (taskId) => {
     axios.delete(`http://127.0.0.1:5000/tasks/${taskId}`)
       .then(() => {
         setTasks(tasks.filter(task => task.id !== taskId)); // Remove task from UI
@@ -92,6 +105,32 @@ function TaskPage() {
         setError("");
       })
       .catch(error => console.error("Error deleting task:", error));
+  };
+  
+  //Resets pending back to null and resores edit/delete buttons
+  const handleDeleteUndo = (taskId) => {
+    setPendingDelete(null);
+  };  
+
+  // buttons to show delete/edit or confirm/undo
+  const deleteButtons = (taskId) => {
+    if (pendingDelete === taskId) {
+      return (
+        <div>
+        <button className="ConfirmButton" onClick={() => handleDeleteConfirm(taskId)}>Confirm</button>
+        <button className="UndoButton" onClick={() => handleDeleteUndo(taskId)}>Undo</button>
+        </div>
+      )
+    }
+    else {
+      return (
+        <div>
+        <button className="EditButton">Edit</button>
+        <button className="DeleteButton" onClick={() => handleDeleteClick(taskId)}>Delete</button>
+        </div>
+      )
+    }
+    
   };  
 
   const handleChange = (e) => {
@@ -135,6 +174,23 @@ function TaskPage() {
     const [year, month, day] = dateString.split("-");
     return `${month}/${day}/${year}`;
   };
+
+  //sets tasks to all tasks
+  let filteredTasks = tasks
+
+  //checks if priority is filtered
+  if (filterPriority !== "None") {
+    filteredTasks = filteredTasks.filter((task) => 
+      task.priority === filterPriority
+    );
+  }
+
+  //checks if status is filtered
+  if (filterStatus !== "None") {
+    filteredTasks = filteredTasks.filter((task) => 
+      task.status === filterStatus
+    );
+  }
   
   return (
     <div>
@@ -142,20 +198,41 @@ function TaskPage() {
       
       <div className="TaskTable">
         <div className="TaskRow TaskHeader">
+          <label>
+            Filter:  
+          </label>
           <div className="TaskCell">Task</div>
-          <div className="TaskCell">Priority</div>
+          <div className="TaskCell">
+            Priority:
+            <select value={filterPriority} onChange={(e) => setFilteredPriority(e.target.value)}>
+              <option value="None">None</option>
+              <option value="Low">Low</option>
+              <option value="Medium">Medium</option>
+              <option value="High">High</option>
+            </select>
+          </div>
+          <div className="TaskCell">
+            Status:
+            <select value={filterStatus} onChange={(e) => setFilteredStatus(e.target.value)}>
+              <option value="None">None</option>
+              <option value="To-Do">To-Do</option>
+              <option value="In Progress">In Progress</option>
+              <option value="Completed">Completed</option>
+            </select>
+          </div>
           <div className="TaskCell">Deadline</div>
           <div className="TaskCell">Make Changes</div>
         </div>
 
-        {tasks.map(task => (
+        {filteredTasks.map(task => (
           <div key={task.id} className="TaskRow">
+            <div className="Task">{}</div>
             <div className="TaskCell">{task.name}</div>
             <div className="TaskCell">{task.priority}</div>
+            <div className="TaskCell">{task.status}</div>
             <div className="TaskCell">{formatDate(task.due_time)}</div>
             <div className="TaskCell">
-              <button className="EditButton">Edit</button>
-              <button className="DeleteButton" onClick={() => handleDelete(task.id)}>Delete</button>
+              {deleteButtons(task.id)}
             </div>
           </div>
         ))}
@@ -325,11 +402,12 @@ function NavigationButtons() {
   return (
     <div className="App">
       <button className="Buttons" onClick={() => navigate('/')}>Tasks</button>
-      {/* <button className="Buttons" onClick={() => navigate('/login')}>Log In</button>
+      <button className="Buttons" onClick={() => navigate('/login')}>Log In</button>
       <button className="Buttons" onClick={() => navigate('/createaccount')}>Create Account</button>
       <button className="ProfileIcon" onClick={() => navigate('/profile')}>
         <img src="/default-profile.png" alt="Profile" className="ProfileIconImage" />
-      </button> */}
+      </button>
+      <button className="SettingsButton" onClick={() => navigate('/settings')}>⚙️</button>
     </div>
   );
 }
@@ -346,6 +424,7 @@ function App() {
             <Route path="/createaccount" element={<CreateAccountPage />} />
             <Route path="/login" element={<LogInPage />} />
             <Route path="/profile" element={<ProfilePage />} />
+            <Route path="/settings" element={<SettingsPage />} />
           </Routes>
         </GlobalProvider>
     </Router>
