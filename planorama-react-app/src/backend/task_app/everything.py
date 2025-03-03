@@ -202,18 +202,12 @@ Delete account:
 @app.route("/deleteuser", methods=["POST"])
 def delete_acc():
     data = request.json
-    return jsonify({"delete received": data})
-
-
-'''
-Log out:
- - Change user back to 'Guest'
- - Guests cannot make tasks
-'''
-@app.route("/logout", methods=["POST"])
-def log_out():
-    data = request.json
-    return jsonify({"logout recieved": data})
+    print(user_info[data.get("username")][1])
+    if (data.get("password") == user_info[data.get("username")][1]):
+        del user_info[data.get("username")]
+        return jsonify({"success": True, "msg": "User deleted"})
+    else:
+        return jsonify({"success": False, "msg": "Incorrect password"})
 
 
 # PROFILE.PY ---------------------

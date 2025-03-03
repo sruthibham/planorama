@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useGlobal } from "./GlobalContext";
 import './App.css';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
@@ -8,6 +9,13 @@ const SettingsPage = () => {
     const [darkMode, setDarkMode] = useState(localStorage.getItem('darkMode') === 'true');
     const [selectedTheme, setSelectedTheme] = useState(localStorage.getItem('theme') || 'light');
     const [textSize, setTextSize] = useState(localStorage.getItem('textSize') || 'medium');
+    //For deleting account
+    const [errMsg, setErrMsg] = useState("");
+    const { setUser } = useGlobal();
+    const { user } = useGlobal();
+    const [ showInputField, setShowInputField ] = useState(false);
+    const [ password, setPassword ] =  useState("");
+    const [ loggedIn, setLoggedIn ] = useState(false);
 
     useEffect(() => {
         document.body.setAttribute('data-theme', darkMode ? 'dark' : selectedTheme);
@@ -15,7 +23,13 @@ const SettingsPage = () => {
         localStorage.setItem('darkMode', darkMode);
         localStorage.setItem('theme', selectedTheme);
         localStorage.setItem('textSize', textSize);
-    }, [darkMode, selectedTheme, textSize]);
+
+        if (user !== "Guest") {
+            setLoggedIn(true);
+        } else {
+            setLoggedIn(false);
+        }
+    }, [darkMode, selectedTheme, textSize, user]);
 
     const saveSettings = async () => {
         try {
@@ -29,6 +43,24 @@ const SettingsPage = () => {
             console.error("Error updating settings:", error);
         }
     };
+
+    const delAccount = () => {
+        axios.post("http://127.0.0.1:5000/deleteuser", { username: user, password: password })
+        .then(response => {
+          setErrMsg(response.data.msg)
+          if (response.data.success) {
+            setUser("Guest");  // Update global state
+          }
+        });
+    }
+    const openPassword = () => {
+        if (showInputField==false) {
+            setShowInputField(true);
+          } else {
+            setShowInputField(false);
+        }
+    }
+
 
     return (
         <div className="SettingsContainer">
@@ -65,6 +97,27 @@ const SettingsPage = () => {
 
             {/* Save Settings */}
             <button className="SettingsSaveButton" onClick={saveSettings}>Save Settings</button>
+
+            {/* Delete Account */}
+            { loggedIn && (
+                <div style={{marginTop:10}}>
+                <button className="SettingsSaveButton" onClick={openPassword}>Delete Account</button>
+                {showInputField && (
+                    <div style={{marginTop:10}}>
+                    <input
+                        type="password"
+                        placeholder="Password"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        style={{marginRight:5}}
+                    />
+                    <button className="SettingsSaveButton" onClick={delAccount}>Confirm</button>
+                    
+                    </div>
+                )}
+                </div>
+            )}
+            <p>{errMsg}</p>
         </div>
     );
 };
