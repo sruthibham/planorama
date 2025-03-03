@@ -74,8 +74,8 @@ function TaskPage() {
     status: "To-Do"
   });
   //for filtering by priority
-  const [filterPriority, setFilteredPriority] = useState(["None"]);
-  const [filterStatus, setFilteredStatus] = useState(["None"]);
+  const [filterPriority, setFilteredPriority] = useState("None");
+  const [filterStatus, setFilteredStatus] = useState("None");
   //for deletions that haven't been decided yet
   const [pendingDelete, setPendingDelete] = useState([null]);
   const [error, setError] = useState("");
