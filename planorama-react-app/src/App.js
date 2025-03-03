@@ -402,11 +402,13 @@ function NavigationButtons() {
   return (
     <div className="App">
       <button className="Buttons" onClick={() => navigate('/')}>Tasks</button>
-      <button className="Buttons" onClick={() => navigate('/login')}>Log In</button>
+      {/* Commented out these buttons because they were moved to a different menu (top right)
+      You can uncomment them for testing if you want*/}
+      {/* <button className="Buttons" onClick={() => navigate('/login')}>Log In</button>
       <button className="Buttons" onClick={() => navigate('/createaccount')}>Create Account</button>
       <button className="ProfileIcon" onClick={() => navigate('/profile')}>
         <img src="/default-profile.png" alt="Profile" className="ProfileIconImage" />
-      </button>
+      </button> */}
       <button className="SettingsButton" onClick={() => navigate('/settings')}>⚙️</button>
     </div>
   );
