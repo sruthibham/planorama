@@ -224,7 +224,11 @@ function TaskPage() {
           <div className="TaskCell">Make Changes</div>
         </div>
 
-        {filteredTasks.map(task => (
+        {filteredTasks.length == 0 ? (
+          // show 'No tasks available.' if 0 tasks meet filter condition(s)
+          <div>No tasks available.</div>
+        ) : (
+          filteredTasks.map(task => (
           <div key={task.id} className="TaskRow">
             <div className="Task">{}</div>
             <div className="TaskCell">{task.name}</div>
@@ -235,7 +239,8 @@ function TaskPage() {
               {deleteButtons(task.id)}
             </div>
           </div>
-        ))}
+        ))
+      )}
       </div>
       <button className="MakeTaskButton" onClick={() => setShowModal(true)}>Create Task</button>
 
