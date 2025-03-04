@@ -225,7 +225,7 @@ function TaskPage() {
         </div>
 
         {filteredTasks.length == 0 ? (
-          // show 'No tasks available.' if 0 tasks meet filter condition(s)
+          // show 'No tasks available.' if 0 tasks meet filter condition(s) or if tasks table empty
           <div>No tasks available.</div>
         ) : (
           filteredTasks.map(task => (
