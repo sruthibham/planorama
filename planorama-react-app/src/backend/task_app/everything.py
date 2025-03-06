@@ -111,7 +111,45 @@ def delete_task(task_id):
     db.session.commit()  # Save changes
     return jsonify({"message": "Task deleted successfully"}), 200
 
+@app.route("/tasks/<int:task_id>", methods=["PUT"])
+def update_task(task_id):
+    data = request.json
+    username = data.get("username")
 
+    # task belongs to the user making the request
+    task = Task.query.filter_by(id=task_id, user=username).first()
+
+    if not data.get("name"):
+        return jsonify({"error": "Task name is required."}), 400
+    if not data.get("due_time"):
+        return jsonify({"error": "Due date is required."}), 400
+
+    if not task:
+        return jsonify({"error": "Task not found or you don't have permission to edit this task"}), 403
+
+    # update
+    task.name = data.get("name", task.name)
+    task.description = data.get("description", task.description)
+    task.due_time = data.get("due_time", task.due_time)
+    task.priority = data.get("priority", task.priority)
+    task.color_tag = data.get("color_tag", task.color_tag)
+    task.status = data.get("status", task.status)
+
+    db.session.commit()
+
+    return jsonify({
+        "message": "Task updated successfully!",
+        "task": {
+            "id": task.id,
+            "user": task.user,
+            "name": task.name,
+            "description": task.description,
+            "due_time": task.due_time,
+            "priority": task.priority,
+            "color_tag": task.color_tag,
+            "status": task.status
+        }
+    }), 200
 
 # LOGIN.PY ------------------------------------
 
