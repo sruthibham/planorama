@@ -69,7 +69,7 @@ function TaskPage() {
   const [tasks, setTasks] = useState([]);
   const [showModal, setShowModal] = useState(false);
   const [newTask, setNewTask] = useState({
-    username: user,
+    username: "",
     name: "",
     description: "",
     due_time: "",
@@ -144,7 +144,7 @@ function TaskPage() {
   };  
 
   const handleChange = (e) => {
-    setNewTask({ ...newTask, [e.target.name]: e.target.value });
+    setNewTask({ ...newTask, [e.target.name]: e.target.value, username: user });
   };
 
   const handleSubmit = () => {
@@ -160,6 +160,7 @@ function TaskPage() {
         }
   
         setNewTask({
+          username: user,
           name: "",
           description: "",
           due_time: "",
@@ -294,6 +295,7 @@ function TaskPage() {
               setError("");
               setWarning("");
               setNewTask({
+              username: user,
               name: "",
               description: "",
               due_time: "",

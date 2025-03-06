@@ -38,13 +38,15 @@ with app.app_context():
 
 @app.route("/tasks", methods=["GET"])
 def get_tasks():
+    global currentUser
     tasks = Task.query.all()
     usersTasks = []
-    print("TYpe"+type(tasks))
     # for (task in tasks):
     #     if (tasks.get("username") == currentUser):
     #         usersTasks.add(task)
+    print("CURRUSER", currentUser)
     return jsonify([{
+        "username": currentUser,
         "id": task.id,
         "name": task.name,
         "description": task.description,
@@ -80,6 +82,7 @@ def add_task():
         warning = None
 
     new_task = Task(
+        user=data["username"],
         name=data["name"],
         description=data.get("description"),
         due_time=data["due_time"],
@@ -116,6 +119,8 @@ def delete_task(task_id):
 # Dict (hash table) containing user's credentials
 # Key = username , Value = (email, password)
 user_info={}
+#Login for quick testing
+user_info["admin"] = ("", "pass")
 
 '''
 Create account:
@@ -175,6 +180,7 @@ def create_acc():
             # Successfully create user
             user_info[username] = (email, password)
             response=["Account created!"]
+            global currentUser
             currentUser=username
             return jsonify({"success": True, "msg": response})
 
@@ -199,6 +205,7 @@ def log_in():
 
     # Check if login is correct
     if (username in user_info and user_info[username][1]==password):
+        global currentUser
         currentUser=username
         return jsonify({"success": True, "msg": "Logged in!"})
     else:
@@ -216,6 +223,7 @@ def delete_acc():
     print(user_info[data.get("username")][1])
     if (data.get("password") == user_info[data.get("username")][1]):
         del user_info[data.get("username")]
+        global currentUser
         currentUser="Guest"
         return jsonify({"success": True, "msg": "User deleted"})
     else:
@@ -227,6 +235,7 @@ Log out:
 '''
 @app.route("/logout", methods=["POST"])
 def log_out():
+    global currentUser
     currentUser="Guest"
     return
 
