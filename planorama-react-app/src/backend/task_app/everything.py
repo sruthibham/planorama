@@ -11,7 +11,7 @@ from flask_cors import CORS
 app = Flask(__name__)
 CORS(app)
 
-currentUser=""
+currentUser="Guest"
 
 # APP.PY (tasks) --------------------------
 
@@ -24,6 +24,7 @@ PRIORITY_OPTIONS = ["Low", "Medium", "High"]
 STATUS_OPTIONS = ["To-Do", "In Progress", "Completed"]
 
 class Task(db.Model):
+    user = db.Column(db.String(32), nullable=False)
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(200), nullable=False)
     description = db.Column(db.Text, nullable=True)
@@ -37,8 +38,14 @@ with app.app_context():
 
 @app.route("/tasks", methods=["GET"])
 def get_tasks():
+    global currentUser
     tasks = Task.query.all()
+    usersTasks = []
+    for task in tasks:
+        if (task.user == currentUser):
+            usersTasks.append(task)
     return jsonify([{
+        "username": currentUser,
         "id": task.id,
         "name": task.name,
         "description": task.description,
@@ -46,7 +53,7 @@ def get_tasks():
         "priority": task.priority,
         "color_tag": task.color_tag,
         "status": task.status
-    } for task in tasks])
+    } for task in usersTasks])
 
 @app.route("/tasks", methods=["POST"])
 def add_task():
@@ -74,6 +81,7 @@ def add_task():
         warning = None
 
     new_task = Task(
+        user=data["username"],
         name=data["name"],
         description=data.get("description"),
         due_time=data["due_time"],
@@ -110,6 +118,8 @@ def delete_task(task_id):
 # Dict (hash table) containing user's credentials
 # Key = username , Value = (email, password)
 user_info={}
+#Login for quick testing
+user_info["admin"] = ("", "pass")
 
 '''
 Create account:
@@ -158,6 +168,9 @@ def create_acc():
     if (len(username) < 4):
         errors.append("Username too short")
         validUser=0
+    if (len(username) > 32):
+        errors.append("Username too long")
+        validUser=0
     if (username=="Guest"):
         errors.append("Username cannot be \"Guest\"")
         validUser=0
@@ -166,6 +179,8 @@ def create_acc():
             # Successfully create user
             user_info[username] = (email, password)
             response=["Account created!"]
+            global currentUser
+            currentUser=username
             return jsonify({"success": True, "msg": response})
 
 
@@ -189,6 +204,8 @@ def log_in():
 
     # Check if login is correct
     if (username in user_info and user_info[username][1]==password):
+        global currentUser
+        currentUser=username
         return jsonify({"success": True, "msg": "Logged in!"})
     else:
         return jsonify({"success": False, "msg": "Incorrect username or password."})
@@ -205,9 +222,21 @@ def delete_acc():
     print(user_info[data.get("username")][1])
     if (data.get("password") == user_info[data.get("username")][1]):
         del user_info[data.get("username")]
+        global currentUser
+        currentUser="Guest"
         return jsonify({"success": True, "msg": "User deleted"})
     else:
         return jsonify({"success": False, "msg": "Incorrect password"})
+
+'''
+Log out:
+ - Set username to "Guest"
+'''
+@app.route("/logout", methods=["POST"])
+def log_out():
+    global currentUser
+    currentUser="Guest"
+    return
 
 
 # PROFILE.PY ---------------------

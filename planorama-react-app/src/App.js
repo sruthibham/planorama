@@ -22,7 +22,7 @@ function DisplayUsername() {
   }, [user]);
 
   const handleClick = () => {
-    if (showExtraButtons==false) {
+    if (showExtraButtons===false) {
       setShowExtraButtons(true);
     } else {
       setShowExtraButtons(false);
@@ -31,6 +31,7 @@ function DisplayUsername() {
 
   const handleLogout = () => {
     setUser("Guest")
+
   }
 
   const navigate = useNavigate();
@@ -63,9 +64,12 @@ function DisplayUsername() {
 }
 
 function TaskPage() {
+  const {user} = useGlobal();
+  const [ loggedIn, setLoggedIn ] = useState(false);
   const [tasks, setTasks] = useState([]);
   const [showModal, setShowModal] = useState(false);
   const [newTask, setNewTask] = useState({
+    username: "",
     name: "",
     description: "",
     due_time: "",
@@ -83,12 +87,18 @@ function TaskPage() {
   const [taskWarning, setTaskWarning] = useState("");
 
   useEffect(() => {
+    if (user !== "Guest") {
+      setLoggedIn(true);
+    } else {
+      setLoggedIn(false);
+      setShowModal(false);
+    }
     axios.get("http://127.0.0.1:5000/tasks")
       .then(response => {
         setTasks(response.data);
       })
       .catch(error => console.error("Error fetching tasks:", error));
-  }, []);
+  }, [user]);
 
 
   //changes state of pending to current task
@@ -134,7 +144,7 @@ function TaskPage() {
   };  
 
   const handleChange = (e) => {
-    setNewTask({ ...newTask, [e.target.name]: e.target.value });
+    setNewTask({ ...newTask, [e.target.name]: e.target.value, username: user });
   };
 
   const handleSubmit = () => {
@@ -150,6 +160,7 @@ function TaskPage() {
         }
   
         setNewTask({
+          username: user,
           name: "",
           description: "",
           due_time: "",
@@ -224,11 +235,12 @@ function TaskPage() {
           <div className="TaskCell">Make Changes</div>
         </div>
 
-        {filteredTasks.length == 0 ? (
+        {filteredTasks.length === 0 ? (
           // show 'No tasks available.' if 0 tasks meet filter condition(s) or if tasks table empty
           <div>No tasks available.</div>
         ) : (
           filteredTasks.map(task => (
+           loggedIn &&
           <div key={task.id} className="TaskRow">
             <div className="Task">{}</div>
             <div className="TaskCell">{task.name}</div>
@@ -239,10 +251,16 @@ function TaskPage() {
               {deleteButtons(task.id)}
             </div>
           </div>
+          
         ))
       )}
       </div>
-      <button className="MakeTaskButton" onClick={() => setShowModal(true)}>Create Task</button>
+      { loggedIn &&
+        <button className="MakeTaskButton" onClick={() => setShowModal(true)}>Create Task</button>
+      }
+      { !loggedIn &&
+        <h3 style={{textAlign: "center"}}>Log in to start making tasks!</h3>
+      } 
 
       {taskWarning && (
           <div className="TaskWarning">
@@ -279,6 +297,7 @@ function TaskPage() {
               setError("");
               setWarning("");
               setNewTask({
+              username: user,
               name: "",
               description: "",
               due_time: "",
