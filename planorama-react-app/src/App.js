@@ -77,6 +77,7 @@ function TaskPage() {
     color_tag: "",
     status: "To-Do"
   });
+  const [editingTask, setEditingTask] = useState(null);
   //for filtering by priority
   const [filterPriority, setFilteredPriority] = useState("None");
   const [filterStatus, setFilteredStatus] = useState("None");
@@ -104,6 +105,12 @@ function TaskPage() {
   //changes state of pending to current task
   const handleDeleteClick = (taskId) => {
     setPendingDelete(taskId);
+  };
+
+  const handleEditClick = (taskId) => {
+    const taskToEdit = tasks.find(task => task.id == taskId);
+    setEditingTask(taskToEdit);
+    setShowModal(true);
   };
 
   //officially deletes tasks
@@ -136,7 +143,7 @@ function TaskPage() {
     else {
       return (
         <div>
-        <button className="EditButton">Edit</button>
+        <button className="EditButton" onClick={() => handleEditClick(taskId)}>Edit</button>
         <button className="DeleteButton" onClick={() => handleDeleteClick(taskId)}>Delete</button>
         </div>
       )
@@ -145,14 +152,26 @@ function TaskPage() {
   };  
 
   const handleChange = (e) => {
-    setNewTask({ ...newTask, [e.target.name]: e.target.value, username: user });
+    if (editingTask) {
+      setEditingTask({ ...editingTask, [e.target.name]: e.target.value });
+    } else {
+      setNewTask({ ...newTask, [e.target.name]: e.target.value });
+    }
   };
 
   const handleSubmit = () => {
     setError("");
     setWarning("");
   
-    axios.post("http://127.0.0.1:5000/tasks", newTask)
+    axios.post("http://127.0.0.1:5000/tasks", {
+      username: user,
+      name: newTask.name,
+      description: newTask.description,
+      due_time: newTask.due_time,
+      priority: newTask.priority,
+      color_tag: newTask.color_tag,
+      status: newTask.status
+    })
       .then(response => {
         setTasks([...tasks, response.data.task]);
   
@@ -180,6 +199,33 @@ function TaskPage() {
         }
       });
   };
+
+  // modify task in DB and UI
+  const handleUpdateTask = () =>{
+    axios.put(`http://127.0.0.1:5000/tasks/${editingTask.id}`, {
+      username: user,
+      name: editingTask.name,
+      description: editingTask.description,
+      due_time: editingTask.due_time,
+      priority: editingTask.priority,
+      color_tag: editingTask.color_tag,
+      status: editingTask.status
+    })
+      .then(response => {
+        setTasks(tasks.map(task =>
+          task.id === editingTask.id ? response.data.task : task
+        ));
+        setEditingTask(null);
+        setShowModal(false);
+      })
+      .catch(error =>  {
+        if (error.response) {
+          setError(error.response.data.error);
+        } else {
+          console.error("Error creating task:", error);
+        }
+      })
+  }
 
    const formatDate = (dateString) => {
     if (!dateString) return "";
@@ -272,28 +318,45 @@ function TaskPage() {
       {showModal && (
         <div className="modal-overlay" onClick={() => setShowModal(false)}>
           <div className="modal" onClick={(e) => e.stopPropagation()}>
-            <h2>Create Task</h2>
+            <h2>{editingTask ? "Edit Task" : "Create Task"}</h2>
+
 
             {error && <p className="ErrorMessage">{error}</p>}
             {warning && <p className="WarningMessage">{warning}</p>}
 
-            <input type="text" name="name" placeholder="Task Name" onChange={handleChange} className="TextFields" required />
-            <input type="text" name="description" placeholder="Description (Optional)" onChange={handleChange} className="TextFields" />
-            <input type="date" name="due_time" onChange={handleChange} className="TextFields" required />
+            <input type="text" name="name" placeholder="Task Name" 
+              value={editingTask ? editingTask.name : newTask.name}
+              onChange={handleChange} 
+              className="TextFields" required 
+            />
+            <input type="text" name="description" placeholder="Description (Optional)"
+              value={editingTask ? editingTask.description : newTask.description}
+              onChange={handleChange} 
+              className="TextFields" 
+            />
+            <input type="date" name="due_time" 
+              value={editingTask ? editingTask.due_time : newTask.due_time}
+              onChange={handleChange} 
+              className="TextFields" required 
+            />
 
-            <select name="priority" onChange={handleChange} className="TextFields">
+            <select name="priority" onChange={handleChange} className="TextFields"
+              value={editingTask ? editingTask.priority : newTask.priority}
+            >
               <option value="Low">Low</option>
               <option value="Medium" selected>Medium</option>
               <option value="High">High</option>
             </select>
              
-            <select name="status" onChange={handleChange} className="TextFields">
+            <select name="status" onChange={handleChange} className="TextFields"
+              value={editingTask ? editingTask.status : newTask.status}
+            >
               <option value="To-Do">To-Do</option>
               <option value="In Progress">In Progress</option>
               <option value="Completed">Completed</option>
             </select>
 
-            <button onClick={handleSubmit} className="Buttons">Save</button>
+            <button onClick={editingTask ? handleUpdateTask : handleSubmit} className="Buttons">Save</button>
             <button onClick={() => {
               setError("");
               setWarning("");
