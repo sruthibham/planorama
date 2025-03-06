@@ -86,6 +86,13 @@ function TaskPage() {
   const [error, setError] = useState("");
   const [warning, setWarning] = useState("");
   const [taskWarning, setTaskWarning] = useState("");
+  const COLORS = [
+    { name: "red", value: "#fbb9c5" },
+    { name: "orange", value: "#fdd0b1" },
+    { name: "yellow", value: "#f9efc7" },
+    { name: "green", value: "#c3edbf" },
+    { name: "purple", value: "#c5bbde"}
+  ];
 
   useEffect(() => {
     if (user !== "Guest") {
@@ -104,7 +111,11 @@ function TaskPage() {
 
   //changes state of pending to current task
   const handleDeleteClick = (taskId) => {
-    setPendingDelete(taskId);
+      if (pendingDelete === taskId) {
+        handleDeleteConfirm(taskId);
+      } else {
+        setPendingDelete(taskId);
+      }
   };
 
   const handleEditClick = (taskId) => {
@@ -249,6 +260,12 @@ function TaskPage() {
       task.status === filterStatus
     );
   }
+
+  // checks if color tag is filtered
+  if (filterColor !== "None") {
+    filteredTasks = filteredTasks.filter((task) => 
+      task.color_tag === filterColor);
+  }
   
   return (
     <div>
@@ -258,6 +275,17 @@ function TaskPage() {
         <div className="TaskRow TaskHeader">
           <label>
             Filter:  
+          </label>
+          <label>
+            Color:
+            <select value={filterColor} onChange={(e) => setFilterColor(e.target.value)}>
+              <option value="None">None</option>
+              {COLORS.map((color) => (
+                <option key={color.value} value={color.value} style={{ backgroundColor: color.value }}>
+                  {color.name}
+                </option>
+              ))}
+            </select>
           </label>
           <div className="TaskCell">Task</div>
           <div className="TaskCell">
@@ -282,13 +310,18 @@ function TaskPage() {
           <div className="TaskCell">Make Changes</div>
         </div>
 
-        {filteredTasks.length === 0 ? (
-          // show 'No tasks available.' if 0 tasks meet filter condition(s) or if tasks table empty
+        {tasks.length === 0 ? (
+          // show 'No tasks avaible.' if tasks table empty
           <div>No tasks available.</div>
+        ) : (
+        filteredTasks.length === 0 ? (
+          // show 'No tasks match.' if 0 tasks meet filter condition(s)
+          <div>No tasks match.</div>
         ) : (
           filteredTasks.map(task => (
            loggedIn &&
-          <div key={task.id} className="TaskRow">
+          <div key={task.id} className="TaskRow" style={{ backgroundColor: task.color_tag || '#faf7f0' }}>
+            <div className="Task">{}</div>
             <div className="Task">{}</div>
             <div className="TaskCell">{task.name}</div>
             <div className="TaskCell">{task.priority}</div>
@@ -300,8 +333,9 @@ function TaskPage() {
           </div>
           
         ))
-      )}
+      ))}
       </div>
+
       { loggedIn &&
         <button className="MakeTaskButton" onClick={() => setShowModal(true)}>Create Task</button>
       }
@@ -347,7 +381,18 @@ function TaskPage() {
               <option value="Medium" selected>Medium</option>
               <option value="High">High</option>
             </select>
-             
+
+            <select name="color_tag" onChange={handleChange} className="TextFields"
+              value={editingTask ? editingTask.color_tag : newTask.color_tag}
+            >
+              <option value="">No color</option>
+              {COLORS.map((color) => (
+                <option key={color.value} value={color.value} style={{ backgroundColor: color.value }}>
+                  {color.name}
+                </option>
+              ))}
+            </select>
+              
             <select name="status" onChange={handleChange} className="TextFields"
               value={editingTask ? editingTask.status : newTask.status}
             >
