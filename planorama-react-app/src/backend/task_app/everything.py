@@ -24,6 +24,7 @@ PRIORITY_OPTIONS = ["Low", "Medium", "High"]
 STATUS_OPTIONS = ["To-Do", "In Progress", "Completed"]
 
 class Task(db.Model):
+    user = db.Column(db.String(32), nullable=False)
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(200), nullable=False)
     description = db.Column(db.Text, nullable=True)
@@ -38,6 +39,11 @@ with app.app_context():
 @app.route("/tasks", methods=["GET"])
 def get_tasks():
     tasks = Task.query.all()
+    usersTasks = []
+    print("TYpe"+type(tasks))
+    # for (task in tasks):
+    #     if (tasks.get("username") == currentUser):
+    #         usersTasks.add(task)
     return jsonify([{
         "id": task.id,
         "name": task.name,
@@ -158,6 +164,9 @@ def create_acc():
     if (len(username) < 4):
         errors.append("Username too short")
         validUser=0
+    if (len(username) > 32):
+        errors.append("Username too long")
+        validUser=0
     if (username=="Guest"):
         errors.append("Username cannot be \"Guest\"")
         validUser=0
@@ -166,6 +175,7 @@ def create_acc():
             # Successfully create user
             user_info[username] = (email, password)
             response=["Account created!"]
+            currentUser=username
             return jsonify({"success": True, "msg": response})
 
 
@@ -189,6 +199,7 @@ def log_in():
 
     # Check if login is correct
     if (username in user_info and user_info[username][1]==password):
+        currentUser=username
         return jsonify({"success": True, "msg": "Logged in!"})
     else:
         return jsonify({"success": False, "msg": "Incorrect username or password."})
@@ -205,9 +216,19 @@ def delete_acc():
     print(user_info[data.get("username")][1])
     if (data.get("password") == user_info[data.get("username")][1]):
         del user_info[data.get("username")]
+        currentUser="Guest"
         return jsonify({"success": True, "msg": "User deleted"})
     else:
         return jsonify({"success": False, "msg": "Incorrect password"})
+
+'''
+Log out:
+ - Set username to "Guest"
+'''
+@app.route("/logout", methods=["POST"])
+def log_out():
+    currentUser="Guest"
+    return
 
 
 # PROFILE.PY ---------------------

@@ -31,6 +31,7 @@ function DisplayUsername() {
 
   const handleLogout = () => {
     setUser("Guest")
+
   }
 
   const navigate = useNavigate();
@@ -63,9 +64,12 @@ function DisplayUsername() {
 }
 
 function TaskPage() {
+  const {user} = useGlobal();
+  const [ loggedIn, setLoggedIn ] = useState(false);
   const [tasks, setTasks] = useState([]);
   const [showModal, setShowModal] = useState(false);
   const [newTask, setNewTask] = useState({
+    username: user,
     name: "",
     description: "",
     due_time: "",
@@ -83,12 +87,18 @@ function TaskPage() {
   const [taskWarning, setTaskWarning] = useState("");
 
   useEffect(() => {
+    if (user != "Guest") {
+      setLoggedIn(true);
+    } else {
+      setLoggedIn(false);
+      setShowModal(false);
+    }
     axios.get("http://127.0.0.1:5000/tasks")
       .then(response => {
         setTasks(response.data);
       })
       .catch(error => console.error("Error fetching tasks:", error));
-  }, []);
+  }, [, user]);
 
 
   //changes state of pending to current task
@@ -242,7 +252,12 @@ function TaskPage() {
         ))
       )}
       </div>
-      <button className="MakeTaskButton" onClick={() => setShowModal(true)}>Create Task</button>
+      { loggedIn &&
+        <button className="MakeTaskButton" onClick={() => setShowModal(true)}>Create Task</button>
+      }
+      { !loggedIn &&
+        <h3 style={{textAlign: "center"}}>Log in to start making tasks!</h3>
+      } 
 
       {taskWarning && (
           <div className="TaskWarning">
