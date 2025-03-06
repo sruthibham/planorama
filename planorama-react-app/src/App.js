@@ -351,7 +351,24 @@ function TaskPage() {
           </div>)}
 
       {showModal && (
-        <div className="modal-overlay" onMouseDown={() => setShowModal(false)}>
+        <div 
+            className="modal-overlay" 
+            onMouseDown={() => {
+              setError("");
+              setWarning("");
+              setEditingTask(null);
+              setNewTask({
+                username: user,
+                name: "",
+                description: "",
+                due_time: "",
+                priority: "Medium",
+                color_tag: "",
+                status: "To-Do"
+              });
+              setShowModal(false);
+            }}
+          >
           <div className="modal" onMouseDown={(e) => e.stopPropagation()}>
             <h2>{editingTask ? "Edit Task" : "Create Task"}</h2>
 
