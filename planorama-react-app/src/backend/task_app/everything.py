@@ -11,7 +11,7 @@ from flask_cors import CORS
 app = Flask(__name__)
 CORS(app)
 
-currentUser=""
+currentUser="Guest"
 
 # APP.PY (tasks) --------------------------
 
@@ -41,10 +41,9 @@ def get_tasks():
     global currentUser
     tasks = Task.query.all()
     usersTasks = []
-    # for (task in tasks):
-    #     if (tasks.get("username") == currentUser):
-    #         usersTasks.add(task)
-    print("CURRUSER", currentUser)
+    for task in tasks:
+        if (task.user == currentUser):
+            usersTasks.append(task)
     return jsonify([{
         "username": currentUser,
         "id": task.id,
@@ -54,7 +53,7 @@ def get_tasks():
         "priority": task.priority,
         "color_tag": task.color_tag,
         "status": task.status
-    } for task in tasks])
+    } for task in usersTasks])
 
 @app.route("/tasks", methods=["POST"])
 def add_task():

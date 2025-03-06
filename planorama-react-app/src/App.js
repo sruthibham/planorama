@@ -22,7 +22,7 @@ function DisplayUsername() {
   }, [user]);
 
   const handleClick = () => {
-    if (showExtraButtons==false) {
+    if (showExtraButtons===false) {
       setShowExtraButtons(true);
     } else {
       setShowExtraButtons(false);
@@ -87,7 +87,7 @@ function TaskPage() {
   const [taskWarning, setTaskWarning] = useState("");
 
   useEffect(() => {
-    if (user != "Guest") {
+    if (user !== "Guest") {
       setLoggedIn(true);
     } else {
       setLoggedIn(false);
@@ -98,7 +98,7 @@ function TaskPage() {
         setTasks(response.data);
       })
       .catch(error => console.error("Error fetching tasks:", error));
-  }, [, user]);
+  }, [user]);
 
 
   //changes state of pending to current task
@@ -235,11 +235,12 @@ function TaskPage() {
           <div className="TaskCell">Make Changes</div>
         </div>
 
-        {filteredTasks.length == 0 ? (
+        {filteredTasks.length === 0 ? (
           // show 'No tasks available.' if 0 tasks meet filter condition(s) or if tasks table empty
           <div>No tasks available.</div>
         ) : (
           filteredTasks.map(task => (
+           loggedIn &&
           <div key={task.id} className="TaskRow">
             <div className="Task">{}</div>
             <div className="TaskCell">{task.name}</div>
@@ -250,6 +251,7 @@ function TaskPage() {
               {deleteButtons(task.id)}
             </div>
           </div>
+          
         ))
       )}
       </div>
