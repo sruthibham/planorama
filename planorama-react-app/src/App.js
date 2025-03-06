@@ -360,6 +360,7 @@ function TaskPage() {
             <button onClick={() => {
               setError("");
               setWarning("");
+              setEditingTask(null);
               setNewTask({
               username: user,
               name: "",
