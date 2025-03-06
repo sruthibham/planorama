@@ -351,8 +351,8 @@ function TaskPage() {
           </div>)}
 
       {showModal && (
-        <div className="modal-overlay" onClick={() => setShowModal(false)}>
-          <div className="modal" onClick={(e) => e.stopPropagation()}>
+        <div className="modal-overlay" onMouseDown={() => setShowModal(false)}>
+          <div className="modal" onMouseDown={(e) => e.stopPropagation()}>
             <h2>{editingTask ? "Edit Task" : "Create Task"}</h2>
 
 
