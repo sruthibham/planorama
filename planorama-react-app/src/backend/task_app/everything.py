@@ -74,7 +74,7 @@ def add_task():
     if data["status"] not in STATUS_OPTIONS:
         return jsonify({"error": f"Invalid status. Must be one of {STATUS_OPTIONS}"}), 400
 
-    existing_task = Task.query.filter_by(name=data["name"], due_time=str(due_date)).first()
+    existing_task = Task.query.filter_by(user=data["username"], name=data["name"], due_time=str(due_date)).first()
     if existing_task:
         warning = "Duplicate task detected, but added successfully."
     else:
