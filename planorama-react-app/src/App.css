@@ -60,11 +60,13 @@ body {
   padding: 10px;
   border-bottom: 1px solid #ccc;
   text-align: center;
+  border-radius: 10px;
 }
 
 .TaskHeader {
   font-weight: bold;
-  background-color: #e3f2fd;
+  /* background-color: #e3f2fd; */
+  background-color: var(--button-background)
 }
 
 .TaskCell {
