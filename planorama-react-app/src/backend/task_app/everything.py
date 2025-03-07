@@ -226,7 +226,7 @@ def create_acc():
     if not UserLogin.query.filter_by(username=username).first():
         if (validEmail==1 and validPass==1 and validUser==1):
             # Successfully create user
-            db.session.add(User(username=username, email=email, pwd=password))
+            db.session.add(UserLogin(username=username, email=email, pwd=password))
             db.session.commit()
             response=["Account created!"]
             global currentUser
