@@ -153,11 +153,24 @@ def update_task(task_id):
 
 # LOGIN.PY ------------------------------------
 
-# Dict (hash table) containing user's credentials
-# Key = username , Value = (email, password)
-user_info={}
+# Database containing user's credentials
+
+class User(db.Model):
+    username = db.Column(db.String(64), primary_key=True)
+    email = db.Column(db.String(64), nullable=False)
+    pwd = db.Column(db.String(64), nullable=False)
+
+with app.app_context():
+    db.create_all()
+
+
 #Login for quick testing
-user_info["admin"] = ("", "pass")
+with app.app_context():
+    if not User.query.filter_by(username="admin").first():
+        admin = User(username="admin", email="email", pwd="pass")
+        db.session.add(admin)
+        db.session.commit()
+
 
 '''
 Create account:
@@ -180,11 +193,9 @@ def create_acc():
         errors.append("Use a valid email")
 
     # Check if email already in use
-    for u, ep in user_info.items():
-        if (ep[0] == email):
-            errors.append("Email already in use\n")
-            validEmail=0
-            break
+    if User.query.filter_by(email=email).first():
+        errors.append("Email already in use")
+        validEmail=0
 
     # Check if password is sufficiently strong
     validPass=1
@@ -212,10 +223,10 @@ def create_acc():
     if (username=="Guest"):
         errors.append("Username cannot be \"Guest\"")
         validUser=0
-    if (username not in user_info):
+    if not User.query.filter_by(username=username).first():
         if (validEmail==1 and validPass==1 and validUser==1):
             # Successfully create user
-            user_info[username] = (email, password)
+            db.session.add(User(username=username, email=email, pwd=password))
             response=["Account created!"]
             global currentUser
             currentUser=username
@@ -240,8 +251,10 @@ def log_in():
     username=data.get("username")
     password=data.get("password")
 
+    user = User.query.filter_by(username=username).first()
+
     # Check if login is correct
-    if (username in user_info and user_info[username][1]==password):
+    if user and user.pwd == password:
         global currentUser
         currentUser=username
         return jsonify({"success": True, "msg": "Logged in!"})
@@ -257,9 +270,15 @@ Delete account:
 @app.route("/deleteuser", methods=["POST"])
 def delete_acc():
     data = request.json
-    print(user_info[data.get("username")][1])
-    if (data.get("password") == user_info[data.get("username")][1]):
-        del user_info[data.get("username")]
+    username = data.get("username")
+    password = data.get("password")
+
+    user = User.query.filter_by(username=username).first()
+
+    if user and user.pwd == password:
+        db.session.delete(user)
+        Task.query.filter_by(username=username).delete()
+        db.session.commit()
         global currentUser
         currentUser="Guest"
         return jsonify({"success": True, "msg": "User deleted"})
