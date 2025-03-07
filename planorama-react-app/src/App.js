@@ -121,7 +121,7 @@ function TaskPage() {
   };
 
   const handleEditClick = (taskId) => {
-    const taskToEdit = tasks.find(task => task.id == taskId);
+    const taskToEdit = tasks.find(task => task.id === taskId);
     setEditingTask(taskToEdit);
     setShowModal(true);
   };

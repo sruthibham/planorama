@@ -2,9 +2,17 @@
   text-align: center;
 }
 
+/* body {
+  background-color: lightblue; */
 body {
-  background-color: lightblue;
+    font-family: var(--font-family, Arial, sans-serif);
+    background-color: var(--background-color, #f0f8ff);
+    color: var(--text-color, black);
+    margin: 0;
+    padding: 0;
+    transition: all 0.3s ease;
 }
+
 
 .modal-overlay {
   position: fixed;
@@ -136,16 +144,16 @@ body {
 
 .Buttons {
   padding: 8px 12px;
+  background-color: var(--button-background);
+  color: var(--button-text-color);
   border: none;
-  background-color: hsl(211, 73%, 55%);
-  color: white;
+  border-radius: 4px;
   cursor: pointer;
-  border-radius: 5px;
-  margin: 5px;
+  transition: background-color 0.3s ease;
 }
 
 .Buttons:hover {
-  background-color: #52a1f5;
+  background-color: var(--button-hover-background);
 }
 
 .LoginFields {
@@ -372,16 +380,51 @@ body {
   background-color: #1e1e1e;
   color: #fff;
 }
+/* Regular Theme (Light) */
+/* Default light theme button colors */
+:root {
+  --button-background: #007bff;
+  --button-hover-background: #007bff;
+  --button-text-color: rgb(255, 255, 255);
+}
 
+/* red Theme */
+[data-theme="red"] {
+  --button-background: #b30000;
+  --button-hover-background: #7f2400;
+  --button-text-color: white;
+}
+
+/* Green Theme */
+[data-theme="green"] {
+  --button-background: #22c55e;
+  --button-hover-background: #16a34a;
+  --button-text-color: white;
+}
+
+/* Apply the button colors globally */
+button {
+  background-color: var(--button-background);
+  color: var(--button-text-color);
+  padding: 10px 20px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+button:hover {
+  background-color: var(--button-hover-background);
+}
 /* Theme Colors */
 /* [data-theme="blue"] {
   background-color: #3b82f6;
 } */
 
 /* container when theme is blue */
-[data-theme="green"] .SettingsSaveButton {
+/* [data-theme="green"] .SettingsSaveButton {
   background-color: #5bf900;
-}
+} */
 
 /* [data-theme="green"] {
   background-color: #22c55e;

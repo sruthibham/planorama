@@ -341,6 +341,8 @@ class UserSettings(db.Model):
     dark_mode = db.Column(db.Boolean, default=False)
     theme = db.Column(db.String(20), default="light")
     text_size = db.Column(db.String(10), default="medium")
+    text_font = db.Column(db.String(50), default="Arial")  # Added text font
+    text_spacing = db.Column(db.String(10), default="None")  # Added text spacing
 
 with app.app_context():
     db.create_all()
@@ -353,6 +355,8 @@ def get_settings(user_id):
             "dark_mode": settings.dark_mode,
             "theme": settings.theme,
             "text_size": settings.text_size
+            "text_font": settings.text_font,  
+            "text_spacing": settings.text_spacing  
         })
     else:
         return jsonify({"error": "Settings not found"}), 404
@@ -366,12 +370,16 @@ def update_settings(user_id):
         settings.dark_mode = data.get("dark_mode", settings.dark_mode)
         settings.theme = data.get("theme", settings.theme)
         settings.text_size = data.get("text_size", settings.text_size)
+        settings.text_font = data.get("text_font", settings.text_font)
+        settings.text_spacing = data.get("text_spacing", settings.text_spacing) 
     else:
         settings = UserSettings(
             user_id=user_id,
             dark_mode=data.get("dark_mode", False),
             theme=data.get("theme", "light"),
             text_size=data.get("text_size", "medium")
+            text_font=data.get("text_font", "Arial"),
+            text_spacing=data.get("text_spacing", "None") 
         )
         db.session.add(settings)
 

@@ -21,7 +21,7 @@ const SettingsPage = () => {
     const [selectedCategory, setSelectedCategory] = useState("appearance");
 
     useEffect(() => {
-        document.body.setAttribute('data-theme', selectedTheme); // Set dark mode theme
+        document.body.setAttribute('data-theme', selectedTheme); 
         document.body.setAttribute('data-text-size', textSize);
         document.body.setAttribute('data-text-font', textFont);
         document.body.setAttribute('data-text-spacing', textSpacing);
@@ -87,40 +87,44 @@ const SettingsPage = () => {
                             <label>App Theme</label>
                             <select value={selectedTheme} onChange={(e) => setSelectedTheme(e.target.value)}>
                                 <option value="light">Light</option>
-                                <option value="blue">Blue</option>
+                                <option value="red">Red</option>
                                 <option value="green">Green</option>
-                            </select>
-                        </div>
-
-                        {/* Text Preferences */}
-                        <div className="SettingsOption">
-                            <label>Text Size</label>
-                            <select value={textSize} onChange={(e) => setTextSize(e.target.value)}>
-                                <option value="small">Small</option>
-                                <option value="medium">Medium</option>
-                                <option value="large">Large</option>
-                            </select>
-                        </div>
-
-                        <div className="SettingsOption">
-                            <label>Text Font</label>
-                            <select value={textFont} onChange={(e) => setTextFont(e.target.value)}>
-                                <option value="Arial">Arial</option>
-                                <option value="Georgia">Georgia</option>
-                                <option value="Verdana">Verdana</option>
-                            </select>
-                        </div>
-
-                        <div className="SettingsOption">
-                            <label>Text Spacing</label>
-                            <select value={textSpacing} onChange={(e) => setTextSpacing(e.target.value)}>
-                                <option value="Compact">Compact</option>
-                                <option value="None">None</option>
-                                <option value="Wide">Wide</option>
                             </select>
                         </div>
                     </div>
                 );
+                case "textPreferences":
+                    return (
+                        <div className={SectionClass}>
+                            <h3>Text Preferences</h3>
+                            <div className="SettingsOption">
+                                <label>Text Size</label>
+                                <select value={textSize} onChange={(e) => setTextSize(e.target.value)}>
+                                    <option value="small">Small</option>
+                                    <option value="medium">Medium</option>
+                                    <option value="large">Large</option>
+                                </select>
+                            </div>
+    
+                            <div className="SettingsOption">
+                                <label>Text Font</label>
+                                <select value={textFont} onChange={(e) => setTextFont(e.target.value)}>
+                                    <option value="Arial">Arial</option>
+                                    <option value="Georgia">Georgia</option>
+                                    <option value="Verdana">Verdana</option>
+                                </select>
+                            </div>
+    
+                            <div className="SettingsOption">
+                                <label>Text Spacing</label>
+                                <select value={textSpacing} onChange={(e) => setTextSpacing(e.target.value)}>
+                                    <option value="Compact">Compact</option>
+                                    <option value="None">None</option>
+                                    <option value="Wide">Wide</option>
+                                </select>
+                            </div>
+                        </div>
+                    );
             case "language":
                 return (
                     <div className={SectionClass}>
@@ -165,6 +169,7 @@ const SettingsPage = () => {
                 <div className="Sidebar">
                     <ul>
                         <li onClick={() => setSelectedCategory("appearance")}>Appearance</li>
+                        <li onClick={() => setSelectedCategory("textPreferences")}>Text Preferences</li>
                         <li onClick={() => setSelectedCategory("language")}>Language & Time</li>
                         <li onClick={() => setSelectedCategory("notifications")}>Notifications</li>
                         {/* Can add more categories here */}
