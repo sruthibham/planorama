@@ -68,6 +68,11 @@ function TaskPage() {
   const {user} = useGlobal();
   const [ loggedIn, setLoggedIn ] = useState(false);
   const [tasks, setTasks] = useState([]);
+  // holds 10 deleted tasks for undoing
+  const [deletedTasks, setDeletedTasks] = useState([]);
+  //ui to show deleted tasks
+  const [showTrashModal, setShowTrashModal] = useState(false);
+
   const [showModal, setShowModal] = useState(false);
   const [newTask, setNewTask] = useState({
     username: "",
@@ -102,6 +107,7 @@ function TaskPage() {
     } else {
       setLoggedIn(false);
       setShowModal(false);
+      setShowTrashModal(false);
     }
     axios.get("http://127.0.0.1:5000/tasks")
       .then(response => {
@@ -128,28 +134,70 @@ function TaskPage() {
 
   //officially deletes tasks
   const handleDeleteConfirm = (taskId) => {
-    axios.delete(`http://127.0.0.1:5000/tasks/${taskId}`)
-      .then(() => {
-        setTasks(tasks.filter(task => task.id !== taskId)); // Remove task from UI
-        setPendingDelete(null); // restore Edit and Delete buttons
-        setWarning("");
-        setError("");
-      })
+
+    //jack
+    setDeletedTasks(prevDeletedTask => {
+
+      //adds task that has been "deleted" to buffer
+      const taskToDelete = tasks.find(task => task.id === taskId)
+
+      //creates new array with newly deleted task
+      const updatedDeletedTasks = [...prevDeletedTask, taskToDelete]
+
+      //starts deleting tasks when more than 10
+      if (updatedDeletedTasks.length > 10) {
+        updatedDeletedTasks.shift()
+
+        axios.delete(`http://127.0.0.1:5000/tasks/${taskId}`)
+          .then(() => {
+          
+        })
       .catch(error => console.error("Error deleting task:", error));
+      }
+    
+      //will set new state of deleted tasks
+      return updatedDeletedTasks
+    });
+
+    setTasks(tasks.filter(task => task.id !== taskId)); // Remove task from UI
+    setPendingDelete(null); // restore Edit and Delete buttons
+    setWarning("");
+    setError("");
+    
   };
   
   //Resets pending back to null and resores edit/delete buttons
-  const handleDeleteUndo = (taskId) => {
+  const handleDeleteDeny = (taskId) => {
     setPendingDelete(null);
   };  
 
-  // buttons to show delete/edit or confirm/undo
+  //undos action from inside the trash
+  //jack
+  const handleDeleteUndo = (taskId) => {
+    //adds task that has been "deleted" to buffer
+    const taskToRestore = deletedTasks.find(task => task.id === taskId)
+    
+    if(taskToRestore) {
+      //gets rid of task in deleted tasks
+      setDeletedTasks(prevDeletedTasks => prevDeletedTasks.filter(task => task.id !== taskId));
+
+      //adds tasks back to task list
+      setTasks(prevTasks => [...prevTasks, taskToRestore])
+    }
+    else {
+      console.log("error with task restoration")
+    }
+
+    
+  };
+
+  // buttons to show delete/edit or confirm/deny
   const deleteButtons = (taskId) => {
     if (pendingDelete === taskId) {
       return (
         <div>
         <button className="ConfirmButton" onClick={() => handleDeleteConfirm(taskId)}>Confirm</button>
-        <button className="UndoButton" onClick={() => handleDeleteUndo(taskId)}>Undo</button>
+        <button className="DenyButton" onClick={() => handleDeleteDeny(taskId)}>Deny</button>
         </div>
       )
     }
@@ -339,7 +387,10 @@ function TaskPage() {
       </div>
 
       { loggedIn &&
-        <button className="MakeTaskButton" onClick={() => setShowModal(true)}>Create Task</button>
+        <div className="TaskTrashButtons">
+          <button className="MakeTaskButton" onClick={() => setShowModal(true)}>Create Task</button>
+          <button className="MakeTrashButton" onClick={() => setShowTrashModal(true)}>Trash</button>
+        </div>
       }
       { !loggedIn &&
         <h3 style={{textAlign: "center"}}>Log in to start making tasks!</h3>
@@ -436,6 +487,45 @@ function TaskPage() {
           </div>
         </div>
       )}
+
+      {showTrashModal && (
+        <div
+            className="trash-modal-overlay" 
+            onMouseDown={() => {
+              setError("");
+              setWarning("");
+              setShowTrashModal(false);
+            }}
+        >
+          <div className="trash-modal" onMouseDown={(e) => e.stopPropagation()}>
+            <h2>{"Past Tasks"}</h2>
+            {deletedTasks.length === 0 ? (
+              //if deletedTasks is 0 none have been deleted
+              <div>No tasks have been deleted.</div>
+            ) : (
+              deletedTasks.map(task => (
+              loggedIn &&
+              <div key={task.id} className="TaskTrashRow" style={{ backgroundColor: task.color_tag || '#faf7f0' }}>
+                <div className="TaskTrashCell">{task.name}</div>
+                <div className="TaskTrashCell">{task.priority}</div>
+                <div className="TaskTrashCell">{task.status}</div>
+                <div className="TaskTrashCell">{formatDate(task.due_time)}</div>
+                <div className="TaskTrashCell">
+                  <button className="UndoButton" onClick={() => handleDeleteUndo(task.id)}>Undo</button>
+                </div>
+              </div>
+              ))
+            )}
+
+            <button onClick={() => {
+              setError("");
+              setWarning("");
+              setEditingTask(null);
+              setShowTrashModal(false);}} className="Buttons">Close</button>   
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }
