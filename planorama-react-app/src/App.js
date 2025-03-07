@@ -39,7 +39,7 @@ function DisplayUsername() {
 
   return (
     <div className="User" style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
-      <button className="TransparentButton" onClick={handleClick}>{user}</button>
+     <div style={{ color: "black", padding: "5px", cursor: "pointer", fontSize: "15px"}} onClick={handleClick}>{user}</div>
       {showExtraButtons && (
         <div style={{ marginTop: "5px", display: "flex", flexDirection: "column", gap: "2px" }}>
           {!showLogoutButton && (
@@ -553,8 +553,9 @@ function NavigationButtons() {
   const navigate = useNavigate();
 
   return (
-    <div className="App">
-      <button className="Buttons" onClick={() => navigate('/')}>Tasks</button>
+    <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', flexDirection: 'row', height: '3vh', padding: '10px' }}>
+      <button className="Buttons" onClick={() => navigate('/')}>Planorama</button>
+
       {/* Commented out these buttons because they were moved to a different menu (top right)
       You can uncomment them for testing if you want*/}
       {/* <button className="Buttons" onClick={() => navigate('/login')}>Log In</button>
@@ -562,10 +563,9 @@ function NavigationButtons() {
       <button className="ProfileIcon" onClick={() => navigate('/profile')}>
         <img src="/default-profile.png" alt="Profile" className="ProfileIconImage" />
       </button> */}
-
-      <button className="SettingsButton" onClick={() => navigate('/settings')}> 
-      <IoSettingsOutline />
-      </button>
+      <div className="SettingsButton" onClick={() => navigate('/settings')}> 
+        <IoSettingsOutline />
+      </div>
     </div>
   );
 }

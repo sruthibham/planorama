@@ -24,9 +24,9 @@ body {
     --sidebar-background: #444444;
     --sidebar-text-color: #ffffff;
     --sidebar-hover-background: #555555;
-    --button-background: #0056b3;
+    /* --button-background: #0056b3;
     --button-text-color: #ffffff;
-    --button-hover-background: #003f7f;
+    --button-hover-background: #003f7f; */
 }
 
 /* Container Styles */

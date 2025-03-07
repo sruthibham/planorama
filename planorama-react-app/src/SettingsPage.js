@@ -86,7 +86,7 @@ const SettingsPage = () => {
                         <div className="SettingsOption">
                             <label>App Theme</label>
                             <select value={selectedTheme} onChange={(e) => setSelectedTheme(e.target.value)}>
-                                <option value="light">Light</option>
+                                <option value="light">Blue</option>
                                 <option value="red">Red</option>
                                 <option value="green">Green</option>
                             </select>

@@ -284,7 +284,17 @@ os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg'}
 MAX_FILE_SIZE = 10 * 1024 * 1024  # 10MB
+UPLOAD_FOLDER = app.config['UPLOAD_FOLDER']
 
+class User(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    username = db.Column(db.String(50), nullable=False, unique=True)
+    profile_picture = db.Column(db.String(100), nullable=True)
+    achievements = db.Column(db.String(255), nullable=True)
+
+    def __repr__(self):
+        return f"<User {self.username}>"
+    
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
@@ -295,36 +305,41 @@ def get_db_connection():
 
 @app.route('/upload_profile_picture', methods=['POST'])
 def upload_profile_picture():
+    user_id = request.form.get('user_id')  # Get the user_id from the request
     if 'file' not in request.files:
         return jsonify({'error': 'No file part'}), 400
     file = request.files['file']
     if file.filename == '':
         return jsonify({'error': 'No selected file'}), 400
+
     if file and allowed_file(file.filename):
         filename = secure_filename(file.filename)
-        filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-        if os.path.exists(filepath):
-            return jsonify({'error': 'File already exists'}), 400
-        if file.content_length > MAX_FILE_SIZE:
+        filepath = os.path.join(UPLOAD_FOLDER, filename)
+        if file.content_length > app.config['MAX_FILE_SIZE']:
             return jsonify({'error': 'File size exceeds 10MB limit'}), 400
+
         file.save(filepath)
-        conn = get_db_connection()
-        conn.execute("UPDATE users SET profile_picture = ? WHERE id = ?", (filename, 1))  # Example user ID = 1
-        conn.commit()
-        conn.close()
-        return jsonify({'message': 'Profile picture updated', 'filename': filename})
-    return jsonify({'error': 'Invalid file format'}), 400
+
+        # Update the user's profile picture in the database
+        user = User.query.get(user_id)
+        if user:
+            user.profile_picture = filename
+            db.session.commit()
+            return jsonify({'message': 'Profile picture updated successfully!', 'filename': filename})
+        else:
+            return jsonify({'error': 'User not found'}), 404
+    else:
+        return jsonify({'error': 'Invalid file format'}), 400
 
 @app.route('/get_profile', methods=['GET'])
 def get_profile():
-    conn = get_db_connection()
-    user = conn.execute("SELECT username, profile_picture, achievements FROM users WHERE id = 1").fetchone()
-    conn.close()
+    user_id = request.args.get('user_id')  # Get the user_id from the query parameter
+    user = User.query.get(user_id)
     if user:
         return jsonify({
-            'username': user['username'],
-            'profile_picture': user['profile_picture'],
-            'achievements': user['achievements']
+            'username': user.username,
+            'profile_picture': user.profile_picture,
+            'achievements': user.achievements or 'No achievements yet'
         })
     return jsonify({'error': 'User not found'}), 404
 
@@ -332,6 +347,22 @@ def get_profile():
 def uploaded_file(filename):
     return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
 
+@app.route('/update_profile', methods=['POST'])
+def update_profile():
+    data = request.json
+    user_id = data['user_id']
+    new_username = data['username']
+
+    conn = get_db_connection()
+    user = conn.execute('SELECT * FROM users WHERE id = ?', (user_id,)).fetchone()
+
+    if user:
+        conn.execute('UPDATE users SET username = ? WHERE id = ?', (new_username, user_id))
+        conn.commit()
+        conn.close()
+        return jsonify({'message': 'Profile updated successfully'})
+    else:
+        return jsonify({'error': 'User not found'}), 404
 
 # SETTINGS.PY ------------------------------------
 
@@ -354,7 +385,7 @@ def get_settings(user_id):
         return jsonify({
             "dark_mode": settings.dark_mode,
             "theme": settings.theme,
-            "text_size": settings.text_size
+            "text_size": settings.text_size,
             "text_font": settings.text_font,  
             "text_spacing": settings.text_spacing  
         })
@@ -377,7 +408,7 @@ def update_settings(user_id):
             user_id=user_id,
             dark_mode=data.get("dark_mode", False),
             theme=data.get("theme", "light"),
-            text_size=data.get("text_size", "medium")
+            text_size=data.get("text_size", "medium"),
             text_font=data.get("text_font", "Arial"),
             text_spacing=data.get("text_spacing", "None") 
         )
@@ -385,9 +416,6 @@ def update_settings(user_id):
 
     db.session.commit()
     return jsonify({"message": "Settings updated successfully"}), 200
-
-
-
 
 
 if __name__ == "__main__":
