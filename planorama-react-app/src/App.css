@@ -400,3 +400,27 @@ body {
   font-size: 20px;
 }
 
+[data-text-font="Arial"] {
+  font-family: Arial, sans-serif;
+}
+
+[data-text-font="Georgia"] {
+  font-family: Georgia, sans-serif;
+}
+
+[data-text-font="Verdana"] {
+  font-family: Verdana, sans-serif;
+}
+
+[data-text-spacing="Compact"] {
+  letter-spacing: -1px;
+}
+
+[data-text-spacing="None"] {
+  letter-spacing: 0px;
+}
+
+[data-text-spacing="Wide"] {
+  letter-spacing: 1px;
+}
+

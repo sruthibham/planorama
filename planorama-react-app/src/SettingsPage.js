@@ -9,6 +9,8 @@ const SettingsPage = () => {
     const [darkMode, setDarkMode] = useState(localStorage.getItem('darkMode') === 'true');
     const [selectedTheme, setSelectedTheme] = useState(localStorage.getItem('theme') || 'light');
     const [textSize, setTextSize] = useState(localStorage.getItem('textSize') || 'medium');
+    const [textFont, setTextFont] = useState(localStorage.getItem('textFont') || 'Arial');
+    const [textSpacing, setTextSpacing] = useState(localStorage.getItem('textSpacing') || 'None'); 
     // For deleting account
     const [errMsg, setErrMsg] = useState("");
     const { setUser } = useGlobal();
@@ -21,17 +23,21 @@ const SettingsPage = () => {
     useEffect(() => {
         document.body.setAttribute('data-theme', selectedTheme); // Set dark mode theme
         document.body.setAttribute('data-text-size', textSize);
+        document.body.setAttribute('data-text-font', textFont);
+        document.body.setAttribute('data-text-spacing', textSpacing);
         document.body.setAttribute('dark-mode', darkMode);
         localStorage.setItem('darkMode', darkMode);
         localStorage.setItem('theme', selectedTheme);
         localStorage.setItem('textSize', textSize);
+        localStorage.setItem('textFont', textFont);
+        localStorage.setItem('textSpacing', textSpacing);
         
         if (user !== "Guest") {
             setLoggedIn(true);
         } else {
             setLoggedIn(false);
         }
-    }, [darkMode, selectedTheme, textSize, user]);
+    }, [darkMode, selectedTheme, textSize, textFont, textSpacing, user]);
 
     const saveSettings = async () => {
         try {
@@ -39,6 +45,8 @@ const SettingsPage = () => {
                 dark_mode: darkMode,
                 theme: selectedTheme,
                 text_size: textSize,
+                text_font: textFont,
+                text_spacing: textSpacing,
             });
             alert("Settings saved successfully!");
         } catch (error) {
@@ -91,6 +99,24 @@ const SettingsPage = () => {
                                 <option value="small">Small</option>
                                 <option value="medium">Medium</option>
                                 <option value="large">Large</option>
+                            </select>
+                        </div>
+
+                        <div className="SettingsOption">
+                            <label>Text Font</label>
+                            <select value={textFont} onChange={(e) => setTextFont(e.target.value)}>
+                                <option value="Arial">Arial</option>
+                                <option value="Georgia">Georgia</option>
+                                <option value="Verdana">Verdana</option>
+                            </select>
+                        </div>
+
+                        <div className="SettingsOption">
+                            <label>Text Spacing</label>
+                            <select value={textSpacing} onChange={(e) => setTextSpacing(e.target.value)}>
+                                <option value="Compact">Compact</option>
+                                <option value="None">None</option>
+                                <option value="Wide">Wide</option>
                             </select>
                         </div>
                     </div>
