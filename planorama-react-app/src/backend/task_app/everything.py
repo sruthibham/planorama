@@ -278,7 +278,7 @@ def delete_acc():
 
     if user and user.pwd == password:
         db.session.delete(user)
-        Task.query.filter_by(username=username).delete()
+        Task.query.filter_by(user=username).delete()
         db.session.commit()
         global currentUser
         currentUser="Guest"
