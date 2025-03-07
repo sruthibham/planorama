@@ -155,7 +155,7 @@ def update_task(task_id):
 
 # Database containing user's credentials
 
-class User(db.Model):
+class UserLogin(db.Model):
     username = db.Column(db.String(64), primary_key=True)
     email = db.Column(db.String(64), nullable=False)
     pwd = db.Column(db.String(64), nullable=False)
@@ -166,8 +166,8 @@ with app.app_context():
 
 #Login for quick testing
 with app.app_context():
-    if not User.query.filter_by(username="admin").first():
-        admin = User(username="admin", email="email", pwd="pass")
+    if not UserLogin.query.filter_by(username="admin").first():
+        admin = UserLogin(username="admin", email="email", pwd="pass")
         db.session.add(admin)
         db.session.commit()
 
@@ -193,7 +193,7 @@ def create_acc():
         errors.append("Use a valid email")
 
     # Check if email already in use
-    if User.query.filter_by(email=email).first():
+    if UserLogin.query.filter_by(email=email).first():
         errors.append("Email already in use")
         validEmail=0
 
@@ -223,7 +223,7 @@ def create_acc():
     if (username=="Guest"):
         errors.append("Username cannot be \"Guest\"")
         validUser=0
-    if not User.query.filter_by(username=username).first():
+    if not UserLogin.query.filter_by(username=username).first():
         if (validEmail==1 and validPass==1 and validUser==1):
             # Successfully create user
             db.session.add(User(username=username, email=email, pwd=password))
@@ -251,7 +251,7 @@ def log_in():
     username=data.get("username")
     password=data.get("password")
 
-    user = User.query.filter_by(username=username).first()
+    user = UserLogin.query.filter_by(username=username).first()
 
     # Check if login is correct
     if user and user.pwd == password:
@@ -273,7 +273,7 @@ def delete_acc():
     username = data.get("username")
     password = data.get("password")
 
-    user = User.query.filter_by(username=username).first()
+    user = UserLogin.query.filter_by(username=username).first()
 
     if user and user.pwd == password:
         db.session.delete(user)
