@@ -4,6 +4,7 @@ import SettingsPage from './SettingsPage';
 import { BrowserRouter as Router, Routes, Route, useNavigate } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import { GlobalProvider, useGlobal } from "./GlobalContext";
+import { IoSettingsOutline } from "react-icons/io5";
 import axios from 'axios';
 
 
@@ -561,7 +562,10 @@ function NavigationButtons() {
       <button className="ProfileIcon" onClick={() => navigate('/profile')}>
         <img src="/default-profile.png" alt="Profile" className="ProfileIconImage" />
       </button> */}
-      <button className="SettingsButton" onClick={() => navigate('/settings')}>⚙️</button>
+
+      <button className="SettingsButton" onClick={() => navigate('/settings')}> 
+      <IoSettingsOutline />
+      </button>
     </div>
   );
 }

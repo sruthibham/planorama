@@ -1,0 +1,172 @@
+/* General Styles */
+body {
+    font-family: Arial, sans-serif;
+    margin: 0;
+    padding: 0;
+    background-color: var(--background-color);
+    color: var(--text-color);
+}
+
+:root {
+    --background-color: #ffffff;
+    --text-color: #000000;
+    --sidebar-background: #f4f4f4;
+    --sidebar-text-color: #333333;
+    --sidebar-hover-background: #dddddd;
+    --button-background: #007bff;
+    --button-text-color: #ffffff;
+    --button-hover-background: #0056b3;
+}
+
+.dark-mode {
+    --background-color: #333333;
+    --text-color: #ffffff;
+    --sidebar-background: #444444;
+    --sidebar-text-color: #ffffff;
+    --sidebar-hover-background: #555555;
+    --button-background: #0056b3;
+    --button-text-color: #ffffff;
+    --button-hover-background: #003f7f;
+}
+
+/* Container Styles */
+.Container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 20px;
+}
+
+.Container.dark-mode {
+    /* background-color: #333; */
+    color: #fff;
+}
+
+.SettingsContent {
+    display: flex;
+    width: 100%;
+    max-width: 1200px;
+    margin-top: 20px;
+}
+
+/* Sidebar Styles */
+.Sidebar {
+    width: 125px;
+    background-color: var(--sidebar-background);
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.Sidebar ul {
+    list-style-type: none;
+    padding: 0;
+}
+
+.Sidebar li {
+    padding: 10px;
+    cursor: pointer;
+    color: var(--sidebar-text-color);
+}
+
+.Sidebar li:hover {
+    background-color: var(--sidebar-hover-background);
+    border-radius: 4px;
+}
+
+/* Main Content Styles */
+.MainContent {
+    flex: 1;
+    padding: 20px;
+    background-color: var(--background-color);
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    margin-left: 20px;
+}
+
+/* Section Styles */
+.Section {
+    margin-bottom: 20px;
+    padding: 15px;
+    /* background-color: #f8f9fa; */
+    border-radius: 10px;
+    /* box-shadow: 0px 2px 8px rgba(0, 0, 0, 0.1); */
+}
+
+.Section.dark-mode {
+    background-color: #333;
+    color: #fff;
+}
+
+.SettingsOption {
+    margin-bottom: 15px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.SettingsOption label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: bold;
+}
+
+.SettingsOption input[type="checkbox"],
+.SettingsOption select {
+    padding: 5px;
+    width: 100%;
+    max-width: 300px;
+}
+
+/* Button Styles */
+.SettingsSaveButton {
+    background-color: var(--button-background);
+    color: var(--button-text-color);
+    padding: 10px 20px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    margin-top: 20px;
+    transition: background-color 0.2s ease-in-out;
+}
+
+.SettingsSaveButton:hover {
+    background-color: var(--button-hover-background);
+}
+
+
+
+/* Delete Account Section */
+.DeleteAccountSection {
+    margin-top: 20px;
+}
+
+.PasswordInputSection {
+    margin-top: 10px;
+}
+
+.PasswordInputSection input {
+    padding: 10px;
+    width: 100%;
+    max-width: 300px;
+    margin-bottom: 10px;
+}
+
+.PasswordInputSection button {
+    background-color: var(--button-background);
+    color: var(--button-text-color);
+    padding: 10px 20px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.PasswordInputSection button:hover {
+    background-color: var(--button-hover-background);
+}
+
+/* Error Message */
+p {
+    color: red;
+    font-weight: bold;
+}

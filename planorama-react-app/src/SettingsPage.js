@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useGlobal } from "./GlobalContext";
-import './App.css';
+import './SettingsPage.css';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 
@@ -9,21 +9,23 @@ const SettingsPage = () => {
     const [darkMode, setDarkMode] = useState(localStorage.getItem('darkMode') === 'true');
     const [selectedTheme, setSelectedTheme] = useState(localStorage.getItem('theme') || 'light');
     const [textSize, setTextSize] = useState(localStorage.getItem('textSize') || 'medium');
-    //For deleting account
+    // For deleting account
     const [errMsg, setErrMsg] = useState("");
     const { setUser } = useGlobal();
     const { user } = useGlobal();
-    const [ showInputField, setShowInputField ] = useState(false);
-    const [ password, setPassword ] =  useState("");
-    const [ loggedIn, setLoggedIn ] = useState(false);
+    const [showInputField, setShowInputField] = useState(false);
+    const [password, setPassword] = useState("");
+    const [loggedIn, setLoggedIn] = useState(false);
+    const [selectedCategory, setSelectedCategory] = useState("appearance");
 
     useEffect(() => {
-        document.body.setAttribute('data-theme', darkMode ? 'dark' : selectedTheme);
+        document.body.setAttribute('data-theme', selectedTheme); // Set dark mode theme
         document.body.setAttribute('data-text-size', textSize);
+        document.body.setAttribute('dark-mode', darkMode);
         localStorage.setItem('darkMode', darkMode);
         localStorage.setItem('theme', selectedTheme);
         localStorage.setItem('textSize', textSize);
-
+        
         if (user !== "Guest") {
             setLoggedIn(true);
         } else {
@@ -47,77 +49,127 @@ const SettingsPage = () => {
     const delAccount = () => {
         axios.post("http://127.0.0.1:5000/deleteuser", { username: user, password: password })
         .then(response => {
-          setErrMsg(response.data.msg)
-          if (response.data.success) {
-            setUser("Guest");  // Update global state
-          }
+            setErrMsg(response.data.msg)
+            if (response.data.success) {
+                setUser("Guest");  // Update global state
+            }
         });
-    }
-    const openPassword = () => {
-        if (showInputField==false) {
-            setShowInputField(true);
-          } else {
-            setShowInputField(false);
-        }
-    }
+    };
 
+    const openPassword = () => {
+        setShowInputField(!showInputField);
+    };
+
+    const renderRightColumn = () => {
+        const SectionClass = darkMode ? "Section dark-mode" : "Section";
+
+        switch (selectedCategory) {
+            case "appearance":
+                return (
+                    <div className={SectionClass}>
+                        <h3>Appearance</h3>
+                        {/* Dark Mode Toggle */}
+                        <div className="SettingsOption">
+                            <label>Dark Mode</label>
+                            <input type="checkbox" checked={darkMode} onChange={() => setDarkMode(!darkMode)} />
+                        </div>
+
+                        {/* Theme Selection */}
+                        <div className="SettingsOption">
+                            <label>App Theme</label>
+                            <select value={selectedTheme} onChange={(e) => setSelectedTheme(e.target.value)}>
+                                <option value="light">Light</option>
+                                <option value="blue">Blue</option>
+                                <option value="green">Green</option>
+                            </select>
+                        </div>
+
+                        {/* Text Preferences */}
+                        <div className="SettingsOption">
+                            <label>Text Size</label>
+                            <select value={textSize} onChange={(e) => setTextSize(e.target.value)}>
+                                <option value="small">Small</option>
+                                <option value="medium">Medium</option>
+                                <option value="large">Large</option>
+                            </select>
+                        </div>
+                    </div>
+                );
+            case "language":
+                return (
+                    <div className={SectionClass}>
+                        <h3>Language & Time</h3>
+                        {/* Start Week on Monday */}
+                        <div className="SettingsOption">
+                            <label>Start Week on Monday</label>
+                            <input type="checkbox" />
+                        </div>
+
+                        {/* Timezone */}
+                        <div className="SettingsOption">
+                            <label>Timezone</label>
+                            <select>
+                                <option value="GMT-5">GMT-5 (Indianapolis)</option>
+                                {/* Add more timezone options here */}
+                            </select>
+                        </div>
+                    </div>
+                );
+            case "notifications":
+                return (
+                    <div className={SectionClass}>
+                        <h3>Notifications</h3>
+                        <div className="SettingsOption">
+                            <label>Enable Notifications</label>
+                            <input type="checkbox" />
+                        </div>
+                    </div>
+                );
+            default:
+                return null;
+        }
+    };
+
+    const ContainerClass = darkMode ? "Container dark-mode" : "Container";
 
     return (
-        <div className="SettingsContainer">
+        <div className={ContainerClass}>
             <h2>Settings</h2>
-
-            {/* Back Button */}
-            <button className="BackButton" onClick={() => navigate(-1)}>← Back</button>
-
-            {/* Dark Mode Toggle */}
-            <div className="SettingsOption">
-                <label>Dark Mode</label>
-                <input type="checkbox" checked={darkMode} onChange={() => setDarkMode(!darkMode)} />
-            </div>
-
-            {/* Theme Selection */}
-            <div className="SettingsOption">
-                <label>App Theme</label>
-                <select value={selectedTheme} onChange={(e) => setSelectedTheme(e.target.value)}>
-                    <option value="light">Light</option>
-                    <option value="blue">Blue</option>
-                    <option value="green">Green</option>
-                </select>
-            </div>
-
-            {/* Text Preferences */}
-            <div className="SettingsOption">
-                <label>Text Size</label>
-                <select value={textSize} onChange={(e) => setTextSize(e.target.value)}>
-                    <option value="small">Small</option>
-                    <option value="medium">Medium</option>
-                    <option value="large">Large</option>
-                </select>
-            </div>
-
-            {/* Save Settings */}
-            <button className="SettingsSaveButton" onClick={saveSettings}>Save Settings</button>
-
-            {/* Delete Account */}
-            { loggedIn && (
-                <div style={{marginTop:10}}>
-                <button className="SettingsSaveButton" onClick={openPassword}>Delete Account</button>
-                {showInputField && (
-                    <div style={{marginTop:10}}>
-                    <input
-                        type="password"
-                        placeholder="Password"
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                        style={{marginRight:5}}
-                    />
-                    <button className="SettingsSaveButton" onClick={delAccount}>Confirm</button>
-                    
-                    </div>
-                )}
+            <div className="SettingsContent">
+                <div className="Sidebar">
+                    <ul>
+                        <li onClick={() => setSelectedCategory("appearance")}>Appearance</li>
+                        <li onClick={() => setSelectedCategory("language")}>Language & Time</li>
+                        <li onClick={() => setSelectedCategory("notifications")}>Notifications</li>
+                        {/* Can add more categories here */}
+                    </ul>
                 </div>
-            )}
-            <p>{errMsg}</p>
+
+                <div className="MainContent">
+                    {renderRightColumn()}
+
+                    <button className="SettingsSaveButton" onClick={saveSettings}>Save Settings</button>
+
+                    {/* Delete Account */}
+                    {loggedIn && (
+                        <div className="DeleteAccountSection">
+                            <button className="SettingsSaveButton" onClick={openPassword}>Delete Account</button>
+                            {showInputField && (
+                                <div className="PasswordInputSection">
+                                    <input
+                                        type="password"
+                                        placeholder="Password"
+                                        value={password}
+                                        onChange={(e) => setPassword(e.target.value)}
+                                    />
+                                    <button className="SettingsSaveButton" onClick={delAccount}>Confirm</button>
+                                </div>
+                            )}
+                        </div>
+                    )}
+                    <p>{errMsg}</p>
+                </div>
+            </div>
         </div>
     );
 };

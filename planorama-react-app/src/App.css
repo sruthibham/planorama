@@ -368,21 +368,24 @@ body {
 }
 
 /* Dark Mode */
-[data-theme="dark"] {
+[dark-mode="true"] {
   background-color: #1e1e1e;
-  color: white;
+  color: #fff;
 }
 
 /* Theme Colors */
-[data-theme="blue"] {
+/* [data-theme="blue"] {
   background-color: #3b82f6;
-  color: white;
+} */
+
+/* container when theme is blue */
+[data-theme="green"] .SettingsSaveButton {
+  background-color: #5bf900;
 }
 
-[data-theme="green"] {
+/* [data-theme="green"] {
   background-color: #22c55e;
-  color: white;
-}
+} */
 
 /* Text Size */
 [data-text-size="small"] {
