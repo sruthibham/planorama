@@ -354,7 +354,7 @@ def get_settings(user_id):
         return jsonify({
             "dark_mode": settings.dark_mode,
             "theme": settings.theme,
-            "text_size": settings.text_size
+            "text_size": settings.text_size,
             "text_font": settings.text_font,  
             "text_spacing": settings.text_spacing  
         })
@@ -377,7 +377,7 @@ def update_settings(user_id):
             user_id=user_id,
             dark_mode=data.get("dark_mode", False),
             theme=data.get("theme", "light"),
-            text_size=data.get("text_size", "medium")
+            text_size=data.get("text_size", "medium"),
             text_font=data.get("text_font", "Arial"),
             text_spacing=data.get("text_spacing", "None") 
         )
