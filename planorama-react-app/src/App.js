@@ -31,8 +31,10 @@ function DisplayUsername() {
   };
 
   const handleLogout = () => {
-    setUser("Guest")
-
+    axios.get("http://127.0.0.1:5000/logout")
+      .then(response => {
+        setUser(response.data);
+    })
   }
 
   const navigate = useNavigate();
@@ -321,7 +323,6 @@ function TaskPage() {
           <div>No tasks match.</div>
         ) : (
           filteredTasks.map(task => (
-           loggedIn &&
           <div key={task.id} className="TaskRow" style={{ backgroundColor: task.color_tag || '#faf7f0' }}>
             <div className="Task">{}</div>
             <div className="Task">{}</div>

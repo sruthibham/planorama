@@ -11,7 +11,17 @@ from flask_cors import CORS
 app = Flask(__name__)
 CORS(app)
 
-currentUser="Guest"
+# Update current user whenever refreshed
+path = os.path.join(os.path.dirname(os.path.abspath(__file__)),"currentUser.txt")
+word = open(path).read()
+if word == "" :
+    currentUser="Guest"
+    open(path, "w+").write(currentUser)
+else:
+    currentUser=word
+    open(path, "w+").write(currentUser)
+
+
 
 # APP.PY (tasks) --------------------------
 
@@ -231,6 +241,7 @@ def create_acc():
             response=["Account created!"]
             global currentUser
             currentUser=username
+            open(path, "w+").write(currentUser)
             return jsonify({"success": True, "msg": response})
 
 
@@ -258,6 +269,7 @@ def log_in():
     if user and user.pwd == password:
         global currentUser
         currentUser=username
+        open(path, "w+").write(currentUser)
         return jsonify({"success": True, "msg": "Logged in!"})
     else:
         return jsonify({"success": False, "msg": "Incorrect username or password."})
@@ -282,6 +294,7 @@ def delete_acc():
         db.session.commit()
         global currentUser
         currentUser="Guest"
+        open(path, "w+").write(currentUser)
         return jsonify({"success": True, "msg": "User deleted"})
     else:
         return jsonify({"success": False, "msg": "Incorrect password"})
@@ -290,11 +303,22 @@ def delete_acc():
 Log out:
  - Set username to "Guest"
 '''
-@app.route("/logout", methods=["POST"])
+@app.route("/logout", methods=["GET"])
 def log_out():
     global currentUser
     currentUser="Guest"
-    return
+    open(path, "w+").write(currentUser)
+    return jsonify(currentUser)
+
+'''
+Update:
+Used to stay logged in when refreshing
+'''
+@app.route("/update-user", methods=["GET"])
+def updateUser():
+    global currentUser
+    currentUser = open(path).read()
+    return jsonify(currentUser)
 
 
 # PROFILE.PY ---------------------
