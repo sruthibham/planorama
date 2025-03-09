@@ -303,12 +303,22 @@ def delete_acc():
 Log out:
  - Set username to "Guest"
 '''
-@app.route("/logout", methods=["POST"])
+@app.route("/logout", methods=["GET"])
 def log_out():
     global currentUser
     currentUser="Guest"
     open(path, "w+").write(currentUser)
-    return
+    return jsonify(currentUser)
+
+'''
+Update:
+Used to stay logged in when refreshing
+'''
+@app.route("/update-user", methods=["GET"])
+def updateUser():
+    global currentUser
+    currentUser = open(path).read()
+    return jsonify(currentUser)
 
 
 # PROFILE.PY ---------------------
