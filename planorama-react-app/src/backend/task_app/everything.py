@@ -6,6 +6,7 @@ import sqlite3
 from flask import Flask, request, jsonify, send_from_directory
 from flask_sqlalchemy import SQLAlchemy
 from flask_cors import CORS
+import json
 
 
 app = Flask(__name__)
@@ -42,6 +43,16 @@ class Task(db.Model):
     priority = db.Column(db.String(20), nullable=False)
     color_tag = db.Column(db.String(20), nullable=True)
     status = db.Column(db.String(20), default="To-Do")
+    subtasks = db.Column(db.Text, default="[]", nullable=True)
+
+    def get_subtasks(self):
+        try:
+            return json.loads(self.subtasks) if self.subtasks else []
+        except json.JSONDecodeError:
+            return []
+
+    def set_subtasks(self, subtasks_list):
+        self.subtasks = json.dumps(subtasks_list)
 
 with app.app_context():
     db.create_all()
@@ -49,11 +60,11 @@ with app.app_context():
 @app.route("/tasks", methods=["GET"])
 def get_tasks():
     global currentUser
-    tasks = Task.query.all()
+    tasks = Task.query.filter_by(user=currentUser).all()
     usersTasks = []
-    for task in tasks:
-        if (task.user == currentUser):
-            usersTasks.append(task)
+    # for task in tasks:
+    #     if (task.user == currentUser):
+    #         usersTasks.append(task)
     return jsonify([{
         "username": currentUser,
         "id": task.id,
@@ -62,8 +73,9 @@ def get_tasks():
         "due_time": task.due_time,
         "priority": task.priority,
         "color_tag": task.color_tag,
-        "status": task.status
-    } for task in usersTasks])
+        "status": task.status,
+        "subtasks": task.get_subtasks()
+    } for task in tasks])
 
 @app.route("/tasks", methods=["POST"])
 def add_task():
@@ -90,6 +102,8 @@ def add_task():
     else:
         warning = None
 
+    subtasks = data.get("subtasks", [])
+
     new_task = Task(
         user=data["username"],
         name=data["name"],
@@ -99,8 +113,11 @@ def add_task():
         color_tag=data.get("color_tag"),
         status=data.get("status", "To-Do")
     )
+    new_task.set_subtasks(subtasks)
+
     db.session.add(new_task)
     db.session.commit()
+
     return jsonify({"message": "Task added successfully!", "warning": warning, "task": {
         "id": new_task.id,
         "name": new_task.name,
@@ -108,7 +125,8 @@ def add_task():
         "due_time": new_task.due_time,
         "priority": new_task.priority,
         "color_tag": new_task.color_tag,
-        "status": new_task.status
+        "status": new_task.status,
+        "subtasks": new_task.get_subtasks()
     }}), 201
 
 @app.route("/tasks/<int:task_id>", methods=["DELETE"])
@@ -145,6 +163,9 @@ def update_task(task_id):
     task.color_tag = data.get("color_tag", task.color_tag)
     task.status = data.get("status", task.status)
 
+    if "subtasks" in data:
+        task.set_subtasks(data["subtasks"])
+
     db.session.commit()
 
     return jsonify({
@@ -157,9 +178,11 @@ def update_task(task_id):
             "due_time": task.due_time,
             "priority": task.priority,
             "color_tag": task.color_tag,
-            "status": task.status
+            "status": task.status,
+            "subtasks": task.get_subtasks()
         }
     }), 200
+
 
 # LOGIN.PY ------------------------------------
 
@@ -464,5 +487,3 @@ def update_settings(user_id):
 
 if __name__ == "__main__":
     app.run(debug=True)
-
-
