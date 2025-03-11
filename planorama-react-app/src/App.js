@@ -71,6 +71,7 @@ function TaskPage() {
   const [ loggedIn, setLoggedIn ] = useState(false);
   const [tasks, setTasks] = useState([]);
   const [showModal, setShowModal] = useState(false);
+  const [newSubtaskName, setNewSubtaskName] = useState("");
   const [newTask, setNewTask] = useState({
     username: "",
     name: "",
@@ -78,7 +79,8 @@ function TaskPage() {
     due_time: "",
     priority: "Medium",
     color_tag: "",
-    status: "To-Do"
+    status: "To-Do",
+    subtasks: []
   });
   const [editingTask, setEditingTask] = useState(null);
   //for filtering by priority
@@ -90,11 +92,13 @@ function TaskPage() {
   const [error, setError] = useState("");
   const [warning, setWarning] = useState("");
   const [taskWarning, setTaskWarning] = useState("");
+  const [isAddingSubtask, setIsAddingSubtask] = useState(false);
   const COLORS = [
     { name: "red", value: "#fbb9c5" },
     { name: "orange", value: "#fdd0b1" },
     { name: "yellow", value: "#f9efc7" },
     { name: "green", value: "#c3edbf" },
+    { name: "blue", value: "#b8dfe6" },
     { name: "purple", value: "#c5bbde"}
   ];
 
@@ -106,11 +110,57 @@ function TaskPage() {
       setShowModal(false);
     }
     axios.get("http://127.0.0.1:5000/tasks")
-      .then(response => {
-        setTasks(response.data);
-      })
-      .catch(error => console.error("Error fetching tasks:", error));
+    .then(response => {
+      setTasks(response.data.map(task => ({
+        ...task,
+        subtasks: task.subtasks || [] // Ensure subtasks is an array
+      })));
+    })
+    .catch(error => console.error("Error fetching tasks:", error));
   }, [user]);
+
+  const handleAddSubtask = () => {
+    if (!newSubtaskName.trim()) return;
+  
+    const newSubtask = {
+      id: ((editingTask?.subtasks || newTask?.subtasks || []).length) + 1,
+      name: newSubtaskName.trim(),
+      completed: false,
+    };
+  
+    if (editingTask) {
+      setEditingTask(prev => ({
+        ...prev,
+        subtasks: [...(prev.subtasks || []), newSubtask], // ✅ Ensure state update for editing
+      }));
+    } else {
+      setNewTask(prev => ({
+        ...prev,
+        subtasks: [...(prev.subtasks || []), newSubtask], // ✅ Ensure state update for new task
+      }));
+    }
+  
+    setNewSubtaskName(""); // Reset input field
+  };
+  
+  const handleToggleSubtask = (taskId, subtaskId, completed) => {
+    setTasks(prevTasks =>
+      prevTasks.map(task =>
+        task.id === taskId
+          ? {
+              ...task,
+              subtasks: task.subtasks.map(sub =>
+                sub.id === subtaskId ? { ...sub, completed } : sub
+              ),
+              status: task.subtasks.every(sub => sub.id === subtaskId ? completed : sub.completed) ? "Completed" : "In Progress",
+            }
+          : task
+      )
+    );
+  
+    axios.put(`http://127.0.0.1:5000/tasks/${taskId}/subtasks/${subtaskId}`, { completed })
+      .catch(error => console.error("Error updating subtask:", error));
+  };
 
 
   //changes state of pending to current task
@@ -124,7 +174,12 @@ function TaskPage() {
 
   const handleEditClick = (taskId) => {
     const taskToEdit = tasks.find(task => task.id === taskId);
-    setEditingTask(taskToEdit);
+  
+    setEditingTask({ 
+      ...taskToEdit, 
+      subtasks: taskToEdit.subtasks ? taskToEdit.subtasks : [] // Ensure subtasks exist
+    });
+  
     setShowModal(true);
   };
 
@@ -185,7 +240,8 @@ function TaskPage() {
       due_time: newTask.due_time,
       priority: newTask.priority,
       color_tag: newTask.color_tag,
-      status: newTask.status
+      status: newTask.status,
+      subtasks: newTask.subtasks
     })
       .then(response => {
         setTasks([...tasks, response.data.task]);
@@ -201,7 +257,8 @@ function TaskPage() {
           due_time: "",
           priority: "Medium",
           color_tag: "",
-          status: "To-Do"
+          status: "To-Do",
+          subtasks: []
         });
   
         setShowModal(false);
@@ -224,7 +281,8 @@ function TaskPage() {
       due_time: editingTask.due_time,
       priority: editingTask.priority,
       color_tag: editingTask.color_tag,
-      status: editingTask.status
+      status: editingTask.status,
+      subtasks: editingTask.subtasks || []
     })
       .then(response => {
         setTasks(tasks.map(task =>
@@ -292,6 +350,7 @@ function TaskPage() {
             </select>
           </label>
           <div className="TaskCell">Task</div>
+          <div className="TaskCell">Subtasks</div>
           <div className="TaskCell">
             Priority:
             <select value={filterPriority} onChange={(e) => setFilteredPriority(e.target.value)}>
@@ -327,6 +386,22 @@ function TaskPage() {
             <div className="Task">{}</div>
             <div className="Task">{}</div>
             <div className="TaskCell">{task.name}</div>
+            <td className="TaskCell" style={{ textAlign: "left"}}>
+              {task.subtasks && task.subtasks.length > 0 ? (
+                <div>
+                  {task.subtasks.map(subtask => (
+                    <div>
+                      <input
+                        type="checkbox"
+                        checked={subtask.completed}
+                        onChange={() => handleToggleSubtask(task.id, subtask.id, !subtask.completed)}
+                      />
+                      <span className={subtask.completed ? "SubtaskCompleted" : ""}>{subtask.name}</span>
+                    </div>
+                  ))}
+                </div>
+              ) : null}
+            </td>
             <div className="TaskCell">{task.priority}</div>
             <div className="TaskCell">{task.status}</div>
             <div className="TaskCell">{formatDate(task.due_time)}</div>
@@ -366,8 +441,11 @@ function TaskPage() {
                 due_time: "",
                 priority: "Medium",
                 color_tag: "",
-                status: "To-Do"
+                status: "To-Do",
+                subtasks: []
               });
+              setNewSubtaskName("");
+              setIsAddingSubtask(false);
               setShowModal(false);
             }}
           >
@@ -420,20 +498,152 @@ function TaskPage() {
               <option value="In Progress">In Progress</option>
               <option value="Completed">Completed</option>
             </select>
-
-            <button onClick={editingTask ? handleUpdateTask : handleSubmit} className="Buttons">Save</button>
-            <button onClick={() => {
-              setError("");
-              setWarning("");
-              setEditingTask(null);
-              setNewTask({
-              username: user,
-              name: "",
-              description: "",
-              due_time: "",
-              priority: "Medium",
-              color_tag: "",
-              status: "To-Do"});setShowModal(false);}} className="Buttons">Cancel</button>
+            {(editingTask || newTask) && (
+              <div className="SubtaskContainer" style={{ textAlign: "left", width: "100%" }}>
+                <h3>Subtasks</h3>
+                {(editingTask?.subtasks || newTask?.subtasks || []).map((subtask, index) => (
+                  <div key={index} className="SubtaskRow" style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                  <input
+                    type="checkbox"
+                    checked={subtask.completed}
+                    onChange={() => {
+                      const updatedSubtasks = [...editingTask.subtasks];
+                      updatedSubtasks[index].completed = !subtask.completed;
+                      setEditingTask({ ...editingTask, subtasks: updatedSubtasks });
+                    }}
+                  />
+            
+                  {!subtask.isEditing ? (
+                    <span className={subtask.completed ? "SubtaskCompleted" : ""}>{subtask.name}</span>
+                  ) : (
+                    <input
+                      type="text"
+                      value={subtask.name}
+                      onChange={(e) => {
+                        const updatedSubtasks = [...editingTask.subtasks];
+                        updatedSubtasks[index].name = e.target.value;
+                        setEditingTask({ ...editingTask, subtasks: updatedSubtasks });
+                      }}
+                      className="SubtaskInput"
+                      style={{ width: "80%" }}
+                    />
+                  )}
+            
+                  {!subtask.isEditing ? (
+                    <button
+                      className="SubtaskButton SubtaskEditButton"
+                      onClick={() => {
+                        const updatedSubtasks = [...editingTask.subtasks];
+                        updatedSubtasks[index].isEditing = true;
+                        setEditingTask({ ...editingTask, subtasks: updatedSubtasks });
+                      }}
+                    >
+                      Edit
+                    </button>
+                  ) : (
+                    <>
+                      <button
+                        className="SubtaskButton SubtaskConfirmButton"
+                        onClick={() => {
+                          const updatedSubtasks = [...editingTask.subtasks];
+                          updatedSubtasks[index].isEditing = false;
+                          setEditingTask({ ...editingTask, subtasks: updatedSubtasks });
+                        }}
+                      >
+                        Save
+                      </button>
+                      <button
+                        className="SubtaskButton SubtaskCancelButton"
+                        onClick={() => {
+                          const updatedSubtasks = [...editingTask.subtasks];
+                          updatedSubtasks[index].isEditing = false;
+                          setEditingTask({ ...editingTask, subtasks: updatedSubtasks });
+                        }}
+                      >
+                        Cancel
+                      </button>
+                    </>
+                  )}
+            
+                  <button
+                    className="SubtaskButton SubtaskDeleteButton"
+                    onClick={() => {
+                      if (window.confirm("Are you sure you want to delete this subtask?")) {
+                        setEditingTask(prev => ({
+                          ...prev,
+                          subtasks: prev.subtasks.filter((_, i) => i !== index)
+                        }));
+                      }
+                    }}
+                  >
+                    Delete
+                  </button>
+                </div>
+              ))}
+              {isAddingSubtask ? (
+                <div className="AddSubtaskRow" style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                  <input
+                    type="text"
+                    value={newSubtaskName}
+                    onChange={(e) => setNewSubtaskName(e.target.value)}
+                    className="TextFields"
+                    placeholder="Enter new subtask..."
+                  />
+                  <button
+                    onClick={() => {
+                      if (newSubtaskName.trim() !== "") {
+                        if (editingTask) {
+                          setEditingTask((prev) => ({
+                            ...prev,
+                            subtasks: [...prev.subtasks, { id: prev.subtasks.length + 1, name: newSubtaskName.trim(), completed: false, isEditing: false }],
+                          }));
+                        } else {
+                          setNewTask((prev) => ({
+                            ...prev,
+                            subtasks: [...prev.subtasks, { id: prev.subtasks.length + 1, name: newSubtaskName.trim(), completed: false, isEditing: false }],
+                          }));
+                        }
+                        setNewSubtaskName(""); // Reset input
+                        setIsAddingSubtask(false);
+                      }
+                    }}
+                    className="SubtaskButton SubtaskConfirmButton"
+                  >
+                    Confirm
+                  </button>
+                  <button
+                    onClick={() => setIsAddingSubtask(false)}
+                    className="SubtaskButton SubtaskCancelButton"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              ) : (
+                <button
+                  onClick={() => setIsAddingSubtask(true)}
+                  className="SubtaskButton"
+                >
+                  + Add Subtask
+                </button>
+              )}
+            </div>
+            )}
+            <div className = "ButtonContainer"> 
+              <button onClick={editingTask ? handleUpdateTask : handleSubmit} className="Buttons">Save</button>
+              <button onClick={() => {
+                setError("");
+                setWarning("");
+                setEditingTask(null);
+                setNewTask({
+                username: user,
+                name: "",
+                description: "",
+                due_time: "",
+                priority: "Medium",
+                color_tag: "",
+                status: "To-Do",
+                subtasks:[]});setNewSubtaskName("");setIsAddingSubtask(false);setShowModal(false);}} className="Buttons">Cancel</button>
+            </div>
           </div>
         </div>
       )}
