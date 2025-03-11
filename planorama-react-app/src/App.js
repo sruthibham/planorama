@@ -131,12 +131,12 @@ function TaskPage() {
     if (editingTask) {
       setEditingTask(prev => ({
         ...prev,
-        subtasks: [...(prev.subtasks || []), newSubtask], // ✅ Ensure state update for editing
+        subtasks: [...(prev.subtasks || []), newSubtask],
       }));
     } else {
       setNewTask(prev => ({
         ...prev,
-        subtasks: [...(prev.subtasks || []), newSubtask], // ✅ Ensure state update for new task
+        subtasks: [...(prev.subtasks || []), newSubtask],
       }));
     }
   
@@ -507,9 +507,15 @@ function TaskPage() {
                     type="checkbox"
                     checked={subtask.completed}
                     onChange={() => {
-                      const updatedSubtasks = [...editingTask.subtasks];
-                      updatedSubtasks[index].completed = !subtask.completed;
-                      setEditingTask({ ...editingTask, subtasks: updatedSubtasks });
+                      if (editingTask) {
+                        const updatedSubtasks = [...editingTask.subtasks];
+                        updatedSubtasks[index].completed = !subtask.completed;
+                        setEditingTask({ ...editingTask, subtasks: updatedSubtasks });
+                      } else {
+                        const updatedSubtasks = [...editingTask.subtasks];
+                        updatedSubtasks[index].completed = !subtask.completed;
+                        setNewTask({ ...newTask, subtasks: updatedSubtasks });
+                      }
                     }}
                   />
             
@@ -520,9 +526,15 @@ function TaskPage() {
                       type="text"
                       value={subtask.name}
                       onChange={(e) => {
-                        const updatedSubtasks = [...editingTask.subtasks];
-                        updatedSubtasks[index].name = e.target.value;
-                        setEditingTask({ ...editingTask, subtasks: updatedSubtasks });
+                        if (editingTask) {
+                          const updatedSubtasks = [...editingTask.subtasks];
+                          updatedSubtasks[index].name = e.target.value;
+                          setEditingTask({ ...editingTask, subtasks: updatedSubtasks });
+                        } else {
+                          const updatedSubtasks = [...newTask.subtasks];
+                          updatedSubtasks[index].name = e.target.value;
+                          setNewTask({ ...newTask, subtasks: updatedSubtasks });
+                        }
                       }}
                       className="SubtaskInput"
                       style={{ width: "80%" }}
@@ -533,9 +545,15 @@ function TaskPage() {
                     <button
                       className="SubtaskButton SubtaskEditButton"
                       onClick={() => {
-                        const updatedSubtasks = [...editingTask.subtasks];
-                        updatedSubtasks[index].isEditing = true;
-                        setEditingTask({ ...editingTask, subtasks: updatedSubtasks });
+                        if (editingTask) {
+                          const updatedSubtasks = [...editingTask.subtasks];
+                          updatedSubtasks[index].isEditing = true;
+                          setEditingTask({ ...editingTask, subtasks: updatedSubtasks });
+                        } else {
+                          const updatedSubtasks = [...newTask.subtasks];
+                          updatedSubtasks[index].isEditing = true;
+                          setNewTask({ ...newTask, subtasks: updatedSubtasks });
+                        }
                       }}
                     >
                       Edit
@@ -545,9 +563,15 @@ function TaskPage() {
                       <button
                         className="SubtaskButton SubtaskConfirmButton"
                         onClick={() => {
-                          const updatedSubtasks = [...editingTask.subtasks];
-                          updatedSubtasks[index].isEditing = false;
-                          setEditingTask({ ...editingTask, subtasks: updatedSubtasks });
+                          if (editingTask) {
+                            const updatedSubtasks = [...editingTask.subtasks];
+                            updatedSubtasks[index].isEditing = false;
+                            setEditingTask({ ...editingTask, subtasks: updatedSubtasks });
+                          } else {
+                            const updatedSubtasks = [...newTask.subtasks];
+                            updatedSubtasks[index].isEditing = false;
+                            setNewTask({ ...newTask, subtasks: updatedSubtasks });
+                          }
                         }}
                       >
                         Save
@@ -555,9 +579,14 @@ function TaskPage() {
                       <button
                         className="SubtaskButton SubtaskCancelButton"
                         onClick={() => {
-                          const updatedSubtasks = [...editingTask.subtasks];
+                          const updatedSubtasks = [...(editingTask?.subtasks || newTask?.subtasks)];
                           updatedSubtasks[index].isEditing = false;
-                          setEditingTask({ ...editingTask, subtasks: updatedSubtasks });
+
+                          if (editingTask) {
+                            setEditingTask({ ...editingTask, subtasks: updatedSubtasks });
+                          } else {
+                            setNewTask({ ...newTask, subtasks: updatedSubtasks });
+                          }
                         }}
                       >
                         Cancel
@@ -569,12 +598,19 @@ function TaskPage() {
                     className="SubtaskButton SubtaskDeleteButton"
                     onClick={() => {
                       if (window.confirm("Are you sure you want to delete this subtask?")) {
-                        setEditingTask(prev => ({
-                          ...prev,
-                          subtasks: prev.subtasks.filter((_, i) => i !== index)
+                        if (editingTask) {
+                          setEditingTask(prev => ({
+                            ...prev,
+                            subtasks: prev.subtasks.filter((_, i) => i !== index)
+                          }));
+                        } else {
+                          setNewTask(prev => ({
+                            ...prev,
+                            subtasks: prev.subtasks.filter((_, i) => i !== index)
                         }));
                       }
-                    }}
+                    }
+                  }}
                   >
                     Delete
                   </button>
@@ -603,7 +639,7 @@ function TaskPage() {
                             subtasks: [...prev.subtasks, { id: prev.subtasks.length + 1, name: newSubtaskName.trim(), completed: false, isEditing: false }],
                           }));
                         }
-                        setNewSubtaskName(""); // Reset input
+                        setNewSubtaskName("");
                         setIsAddingSubtask(false);
                       }
                     }}
@@ -612,7 +648,7 @@ function TaskPage() {
                     Confirm
                   </button>
                   <button
-                    onClick={() => setIsAddingSubtask(false)}
+                    onClick={() => {setNewSubtaskName("");setIsAddingSubtask(false)}}
                     className="SubtaskButton SubtaskCancelButton"
                   >
                     Cancel
