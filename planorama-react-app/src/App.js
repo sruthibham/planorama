@@ -849,13 +849,21 @@ function LogInPage() {
   );
 }
 
+function TeamsPage() {
+  const navigate = useNavigate();
+
+  return (
+    <div>Teams</div>
+  )
+}
+
 function NavigationButtons() {
   const navigate = useNavigate();
 
   return (
     <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', flexDirection: 'row', height: '3vh', padding: '10px' }}>
       <button className="Buttons" onClick={() => navigate('/')}>Planorama</button>
-
+      <button className="Buttons" style={{marginLeft: 5}}onClick={() => navigate('/teams')}>Teams</button>
       {/* Commented out these buttons because they were moved to a different menu (top right)
       You can uncomment them for testing if you want*/}
       {/* <button className="Buttons" onClick={() => navigate('/login')}>Log In</button>
@@ -883,6 +891,7 @@ function App() {
             <Route path="/login" element={<LogInPage />} />
             <Route path="/profile" element={<ProfilePage />} />
             <Route path="/settings" element={<SettingsPage />} />
+            <Route path="/teams" element={<TeamsPage />} />
           </Routes>
         </GlobalProvider>
     </Router>
