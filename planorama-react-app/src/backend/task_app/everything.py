@@ -7,7 +7,8 @@ from flask import Flask, request, jsonify, send_from_directory
 from flask_sqlalchemy import SQLAlchemy
 from flask_cors import CORS
 import json
-
+import threading
+import time
 
 app = Flask(__name__)
 CORS(app)
@@ -44,6 +45,7 @@ class Task(db.Model):
     color_tag = db.Column(db.String(20), nullable=True)
     status = db.Column(db.String(20), default="To-Do")
     subtasks = db.Column(db.Text, default="[]", nullable=True)
+    start_date = db.Column(db.String(50), nullable=True)  # New Field
 
     def get_subtasks(self):
         try:
@@ -60,7 +62,8 @@ with app.app_context():
 @app.route("/tasks", methods=["GET"])
 def get_tasks():
     global currentUser
-    tasks = Task.query.filter_by(user=currentUser).all()
+    tasks = Task.query.filter(Task.user == currentUser, 
+                              (Task.start_date == None) | (Task.start_date <= datetime.today().strftime("%Y-%m-%d"))).all()
     usersTasks = []
     # for task in tasks:
     #     if (task.user == currentUser):
@@ -74,6 +77,25 @@ def get_tasks():
         "priority": task.priority,
         "color_tag": task.color_tag,
         "status": task.status,
+        "start_date": task.start_date,
+        "subtasks": task.get_subtasks()
+    } for task in tasks])
+
+# Retrieve SCHEDULED tasks
+@app.route("/scheduled_tasks", methods=["GET"])
+def get_scheduled_tasks():
+    global currentUser
+    tasks = Task.query.filter(Task.user == currentUser, Task.start_date > datetime.today().strftime("%Y-%m-%d")).all()
+
+    return jsonify([{
+        "id": task.id,
+        "name": task.name,
+        "description": task.description,
+        "due_time": task.due_time,
+        "priority": task.priority,
+        "color_tag": task.color_tag,
+        "status": task.status,
+        "start_date": task.start_date,
         "subtasks": task.get_subtasks()
     } for task in tasks])
 
@@ -90,6 +112,15 @@ def add_task():
         due_date = datetime.strptime(data["due_time"], "%Y-%m-%d").date()
     except ValueError:
         return jsonify({"error": "Deadline is required"}), 400
+    
+    start_date = data.get("start_date")
+    if start_date:
+        try:
+            start_date_dt = datetime.strptime(start_date, "%Y-%m-%d").date()
+            if start_date_dt < datetime.today().date():
+                return jsonify({"error": "Start date cannot be in the past."}), 400
+        except ValueError:
+            return jsonify({"error": "Start date format invalid."}), 400
 
     if data["priority"] not in PRIORITY_OPTIONS:
         return jsonify({"error": f"Invalid priority. Must be one of {PRIORITY_OPTIONS}"}), 400
@@ -111,7 +142,8 @@ def add_task():
         due_time=data["due_time"],
         priority=data["priority"],
         color_tag=data.get("color_tag"),
-        status=data.get("status", "To-Do")
+        status=data.get("status", "To-Do"),
+        start_date=start_date
     )
     new_task.set_subtasks(subtasks)
 
@@ -126,8 +158,22 @@ def add_task():
         "priority": new_task.priority,
         "color_tag": new_task.color_tag,
         "status": new_task.status,
+        "start_date": new_task.start_date,
         "subtasks": new_task.get_subtasks()
     }}), 201
+
+# Move scheduled tasks to active at midnight
+def auto_move_tasks():
+    while True:
+        with app.app_context():
+            today = datetime.today().strftime("%Y-%m-%d")
+            tasks = Task.query.filter(Task.start_date == today).all()
+            for task in tasks:
+                task.start_date = None  # Move to active
+            db.session.commit()
+        time.sleep(86400)  # Run every 24 hours
+# Start the background thread
+threading.Thread(target=auto_move_tasks, daemon=True).start()
 
 @app.route("/tasks/<int:task_id>", methods=["DELETE"])
 def delete_task(task_id):
@@ -151,9 +197,18 @@ def update_task(task_id):
         return jsonify({"error": "Task name is required."}), 400
     if not data.get("due_time"):
         return jsonify({"error": "Due date is required."}), 400
-
     if not task:
         return jsonify({"error": "Task not found or you don't have permission to edit this task"}), 403
+    
+    start_date = data.get("start_date")
+    if start_date:
+        try:
+            start_date_dt = datetime.strptime(start_date, "%Y-%m-%d").date()
+            if start_date_dt < datetime.today().date():
+                return jsonify({"error": "Start date cannot be in the past."}), 400
+        except ValueError:
+            return jsonify({"error": "Start date format invalid."}), 400
+
 
     # update
     task.name = data.get("name", task.name)
@@ -162,6 +217,7 @@ def update_task(task_id):
     task.priority = data.get("priority", task.priority)
     task.color_tag = data.get("color_tag", task.color_tag)
     task.status = data.get("status", task.status)
+    task.start_date = start_date
 
     if "subtasks" in data:
         task.set_subtasks(data["subtasks"])
@@ -182,6 +238,18 @@ def update_task(task_id):
             "subtasks": task.get_subtasks()
         }
     }), 200
+# Start task immediately (move to active)
+@app.route("/tasks/<int:task_id>/start_now", methods=["PUT"])
+def start_task_now(task_id):
+    task = Task.query.get(task_id)
+    if not task:
+        return jsonify({"error": "Task not found"}), 404
+
+    task.start_date = None 
+    db.session.commit()
+
+    return jsonify({"message": "Task started immediately!"}), 200
+
 
 
 # LOGIN.PY ------------------------------------

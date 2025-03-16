@@ -70,6 +70,7 @@ function TaskPage() {
   const {user} = useGlobal();
   const [ loggedIn, setLoggedIn ] = useState(false);
   const [tasks, setTasks] = useState([]);
+  const [scheduledTasks, setScheduledTasks] = useState([]);
   const [showModal, setShowModal] = useState(false);
   const [newSubtaskName, setNewSubtaskName] = useState("");
   const [newTask, setNewTask] = useState({
@@ -80,6 +81,7 @@ function TaskPage() {
     priority: "Medium",
     color_tag: "",
     status: "To-Do",
+    start_date: "",
     subtasks: []
   });
   const [editingTask, setEditingTask] = useState(null);
@@ -109,14 +111,18 @@ function TaskPage() {
       setLoggedIn(false);
       setShowModal(false);
     }
+  
     axios.get("http://127.0.0.1:5000/tasks")
-    .then(response => {
-      setTasks(response.data.map(task => ({
-        ...task,
-        subtasks: task.subtasks || [] // Ensure subtasks is an array
-      })));
-    })
-    .catch(error => console.error("Error fetching tasks:", error));
+      .then(response => {
+        const today = new Date().toISOString().split("T")[0];
+  
+        const activeTasks = response.data.filter(task => !task.start_date || task.start_date <= today);
+        const futureTasks = response.data.filter(task => task.start_date && task.start_date > today);
+  
+        setTasks(activeTasks);
+        setScheduledTasks(futureTasks);
+      })
+      .catch(error => console.error("Error fetching tasks:", error));
   }, [user]);
 
   const handleAddSubtask = () => {
@@ -241,11 +247,20 @@ function TaskPage() {
       priority: newTask.priority,
       color_tag: newTask.color_tag,
       status: newTask.status,
+      start_date: newTask.start_date,
       subtasks: newTask.subtasks
     })
       .then(response => {
-        setTasks([...tasks, response.data.task]);
-  
+        const addedTask = response.data.task;
+
+        // If task has a future start date, add to scheduledTasks instead
+        const today = new Date().toISOString().split("T")[0]; // Get today's date in "YYYY-MM-DD" format
+        if (addedTask.start_date && addedTask.start_date > today) {
+          setScheduledTasks(prev => [...prev, addedTask]); 
+        } else {
+          setTasks(prev => [...prev, addedTask]); // Otherwise, add to active tasks
+        }
+
         if (response.data.warning) {
           setTaskWarning(response.data.warning);
         }
@@ -258,6 +273,7 @@ function TaskPage() {
           priority: "Medium",
           color_tag: "",
           status: "To-Do",
+          start_date: "",
           subtasks: []
         });
   
@@ -271,7 +287,16 @@ function TaskPage() {
         }
       });
   };
-
+  // Handle manual start of scheduled tasks
+  const handleStartNow = (taskId) => {
+    axios.put(`http://127.0.0.1:5000/tasks/${taskId}/start_now`)
+      .then(() => {
+        window.location.reload();
+      })
+      .catch(error => {
+        console.error("Error starting task early:", error);
+      });
+  };
   // modify task in DB and UI
   const handleUpdateTask = () =>{
     axios.put(`http://127.0.0.1:5000/tasks/${editingTask.id}`, {
@@ -282,6 +307,7 @@ function TaskPage() {
       priority: editingTask.priority,
       color_tag: editingTask.color_tag,
       status: editingTask.status,
+      start_date: editingTask.start_date,
       subtasks: editingTask.subtasks || []
     })
       .then(response => {
@@ -332,7 +358,8 @@ function TaskPage() {
   return (
     <div>
       <h1 className="App">Your Tasks</h1>
-      
+      {/* Active Tasks Section */}
+      <h2>Active Tasks</h2>
       <div className="TaskTable">
         <div className="TaskRow TaskHeader">
           <label>
@@ -409,9 +436,29 @@ function TaskPage() {
               {deleteButtons(task.id)}
             </div>
           </div>
-          
         ))
       ))}
+      {scheduledTasks.length > 0 && (
+        <div style={{ marginTop: "40px", opacity: 0.8 }}>
+          <h3 style={{ fontSize: "16px", fontWeight: "bold" }}>Scheduled Tasks</h3>
+          <div className="ScheduledTaskContainer">
+            {scheduledTasks.map(task => (
+              <div key={task.id} className="ScheduledTask" style={{
+                backgroundColor: task.color_tag || '#faf7f0',
+                fontSize: "14px",
+                padding: "5px",
+                borderRadius: "5px",
+                marginBottom: "5px"
+              }}>
+                <div>{task.name}</div>
+                <div style={{ fontSize: "12px", color: "#555" }}>Starts on: {formatDate(task.start_date)}</div>
+                <button className="ConfirmButton" onClick={() => handleStartNow(task.id)}>Start Now</button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       </div>
 
       { loggedIn &&
@@ -442,6 +489,7 @@ function TaskPage() {
                 priority: "Medium",
                 color_tag: "",
                 status: "To-Do",
+                start_date: "",
                 subtasks: []
               });
               setNewSubtaskName("");
@@ -471,7 +519,12 @@ function TaskPage() {
               onChange={handleChange} 
               className="TextFields" required 
             />
-
+            {/* Added start_date input */}
+            <input type="date" name="start_date"
+              value={editingTask ? editingTask.start_date : newTask.start_date}
+              onChange={handleChange}
+              className="TextFields"
+            />
             <select name="priority" onChange={handleChange} className="TextFields"
               value={editingTask ? editingTask.priority : newTask.priority}
             >
