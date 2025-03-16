@@ -850,10 +850,53 @@ function LogInPage() {
 }
 
 function TeamsPage() {
-  const navigate = useNavigate();
+  const [ teamList, setTeamList ] = useState([]);
+  const [ showFields, setShowFields ] = useState(false);
+  const [ teamName, setTeamName ] = useState("");
+
+  const handleOpen = () => {
+    setShowFields(true);
+  }
+  const handleClose = () => {
+    setShowFields(false);
+  }
+
+  const handleCreate = () => {
+    setTeamList([...teamList, "new team"]);
+  }
+  
 
   return (
-    <div>Teams</div>
+    <div>
+    <div className="Headers">
+      <h1>Teams</h1>
+      
+        { !showFields && <button className="Button" onClick={handleOpen}>Create Team</button> }
+        { showFields && (
+          <div>
+            <input
+              type="text"
+              placeholder="Team name"
+              value={teamName}
+              onChange={(e) => setTeamName(e.target.value)}
+              className="TextFields"
+            />
+            <button onClick={handleClose}>Cancel</button>
+            <button onClick={handleCreate}>Create</button>
+          </div>
+        )  
+        }
+      
+    </div>
+    
+      <div className="TeamContainer">
+        {teamList.map((team, index) => (
+          <button key={index} style={{padding: 20}}>
+            {team}
+          </button>
+        ))}
+      </div>
+    </div>
   )
 }
 
