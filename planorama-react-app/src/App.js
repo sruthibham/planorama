@@ -853,16 +853,20 @@ function TeamsPage() {
   const [ teamList, setTeamList ] = useState([]);
   const [ showFields, setShowFields ] = useState(false);
   const [ teamName, setTeamName ] = useState("");
-
+  const {user} = useGlobal();
   const handleOpen = () => {
     setShowFields(true);
   }
   const handleClose = () => {
     setShowFields(false);
+    setTeamName("");
   }
 
   const handleCreate = () => {
-    setTeamList([...teamList, "new team"]);
+    axios.post("http://127.0.0.1:5000/createteam", { teamName: teamName })
+    .then(response => {
+      setTeamList([...teamList, teamName]);
+    });
   }
   
 
