@@ -485,5 +485,23 @@ def update_settings(user_id):
     return jsonify({"message": "Settings updated successfully"}), 200
 
 
+# TEAMS ------------------------------------------------
+class Teams(db.Model):
+    teamName = db.Column(db.String(64), primary_key=True)
+    owner = db.Column(db.String(64), nullable=False)
+    members = db.Column(db.String(64), nullable=True)
+
+with app.app_context():
+    db.create_all()
+
+@app.route("/createteam", methods=["POST"])
+def createTeam():
+    data = request.json
+    db.session.add(Teams(teamName=data.get("teamName"), owner=currentUser, members=currentUser))
+    db.session.commit()
+    return jsonify(data)
+
+
+
 if __name__ == "__main__":
     app.run(debug=True)
