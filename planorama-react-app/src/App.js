@@ -820,16 +820,18 @@ function TeamsPage() {
       
         { !showFields && <button className="Button" onClick={handleOpen}>Create Team</button> }
         { showFields && (
-          <div>
+          <div className="Container">
             <input
               type="text"
               placeholder="Team name"
               value={teamName}
               onChange={(e) => setTeamName(e.target.value)}
-              className="TextFields"
+              className='TextFields'
             />
-            <button onClick={handleClose}>Cancel</button>
-            <button onClick={handleCreate}>Create</button>
+            <div className="ButtonContainer">
+              <button onClick={handleClose}>Cancel</button>
+              <button onClick={handleCreate}>Create</button>
+            </div>
           </div>
         )  
         }

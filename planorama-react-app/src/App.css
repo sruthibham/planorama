@@ -570,3 +570,15 @@ button:hover {
   width: 90%;
   margin: 0 auto;
 }
+
+.Container {
+  position: relative;
+  display: inline-block;
+}
+.ButtonContainer {
+  position: absolute;
+  bottom: -10px;
+  right: -10px;
+  display: flex;
+  gap: 5px; 
+}
