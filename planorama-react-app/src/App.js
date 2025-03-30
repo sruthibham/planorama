@@ -882,7 +882,7 @@ function TeamsPage() {
       setTeamList(response.data);
     })
     .catch(error => console.error("Error fetching teams:", error));
-  }, [teamList, user]);
+  }, [ user]);
 
   return (
     <div>
