@@ -931,6 +931,8 @@ const TeamPage = () => {
   const { teamID } = useParams();
   const navigate = useNavigate();
   const [ team, setTeam ] = useState(null);
+  const { user } = useGlobal();
+  const [ showConfirm, setShowConfirm ] = useState(false);
 
   useEffect(() => {
     axios.get(`http://127.0.0.1:5000/getteam?teamID=${teamID}`)
@@ -939,6 +941,21 @@ const TeamPage = () => {
       })
       .catch(error => console.error("Error fetching team:", error));
   }, [teamID]);
+
+  const handleOpenConfirm = () => {
+    if (showConfirm) {
+      setShowConfirm(false);
+    } else {
+      setShowConfirm(true);
+    }
+  }
+
+  const handleDelete = () => {
+    axios.post("http://127.0.0.1:5000/deleteteam", {teamID: teamID})
+    .then((response) => {
+      navigate("/teams")
+    })
+  }
 
   if (!team) return <h3 className='Headers'>Loading team...</h3>;
 
@@ -960,6 +977,20 @@ const TeamPage = () => {
       <div className='AddMember'>      
         <button>Add member</button>
       </div>
+      { user == team.owner && (
+      <div className='AddMember'>      
+        <button style={{"marginTop":20, backgroundColor: "red"}} onClick={handleOpenConfirm}>Delete Team</button>
+      </div>
+      )}
+      { user == team.owner && showConfirm && (
+        <div>
+          <p className='AddMember' style={{"marginTop":20}}>Are you sure? Team will be deleted for all members.</p>
+          <div className='AddMember'>
+            <button style={{"marginTop":10, backgroundColor:"red"}} onClick={handleDelete}>Confirm</button>
+            <button style={{"marginLeft":10, marginTop:10}}>Cancel</button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

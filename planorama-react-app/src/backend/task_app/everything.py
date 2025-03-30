@@ -614,5 +614,14 @@ def getTeamFromID():
         "members": team.get_members()
     })
 
+# Delete a team from database
+@app.route("/deleteteam", methods=["POST"])
+def delTeam():
+    data = request.json
+    team = Teams.query.get(data["teamID"])
+    db.session.delete(team)
+    db.session.commit()
+    return jsonify(data)
+
 if __name__ == "__main__":
     app.run(debug=True)
