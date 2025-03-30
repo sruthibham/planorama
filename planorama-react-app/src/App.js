@@ -310,6 +310,7 @@ function TaskPage() {
           </div>
           <div className="TaskCell">Deadline</div>
           <div className="TaskCell">Make Changes</div>
+          <div className="TaskCell">Notes</div>
         </div>
 
         {tasks.length === 0 ? (
@@ -332,6 +333,7 @@ function TaskPage() {
             <div className="TaskCell">
               {deleteButtons(task.id)}
             </div>
+            <div className="TaskCell">{<Notes />}</div>
           </div>
           
         ))
@@ -568,6 +570,46 @@ function NavigationButtons() {
       </button>
     </div>
   );
+}
+
+//Jack did this
+function Notes() {
+  const [showNotes, setShowNotes] = useState(false);
+  const [edit, setEdit] = useState();
+  //const [notes, setNotes] = useState([]);
+
+  const applyFormating = (format) => {
+    console.log(format)
+  }
+
+
+  return (
+      <div>
+        <button className="NotesButton" onClick={() => setShowNotes(!showNotes)}> 
+          {showNotes ? "Close Notes" : "Open Notes"}
+        </button>
+
+        {showNotes && (
+          <div>
+            <h3>Notes</h3>
+            <button className="BoldButton" onClick={() => applyFormating("bold")}>Bold</button>
+            <button className="BulletButton" onClick={() => applyFormating("bullet")}>Bullet</button>
+            <button className="ItalicsButton" onClick={() => applyFormating("italics")}>Italics</button>
+
+            <textarea
+              value={edit}
+              onChange={(e) => setEdit(e.target.value)}
+              placeholder="Put notes here..."
+              rows={5}
+            />
+
+
+          </div>
+        )}
+
+      </div>
+  );
+
 }
 
 function App() {

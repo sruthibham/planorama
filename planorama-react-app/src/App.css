@@ -47,7 +47,7 @@ body {
 
 .TaskRow {
   display: grid;
-  grid-template-columns: 0.25fr 0.75fr 1fr 1fr 1fr 1fr 1fr; /* Filter, Color, Task, Priority, Status, Deadline, Make Changes */
+  grid-template-columns: 0.25fr 0.75fr 1fr 1fr 1fr 1fr 1fr 1fr; /* Filter, Color, Task, Priority, Status, Deadline, Make Changes, Notes */
   align-items: center;
   padding: 10px;
   border-bottom: 1px solid #ccc;
@@ -146,6 +146,62 @@ body {
 
 .Buttons:hover {
   background-color: #52a1f5;
+}
+
+.BoldButton {
+  padding: 5px 5px;
+  border: none;
+  background-color: #92b1fb;
+  color: white;
+  cursor: pointer;
+  border-radius: 5px;
+  margin: 5px;
+}
+
+.BoldButton:hover {
+  background-color: #7087f7;
+}
+
+.BulletButton {
+  padding: 5px 5px;
+  border: none;
+  background-color: #92fba0;
+  color: white;
+  cursor: pointer;
+  border-radius: 5px;
+  margin: 5px;
+}
+
+.BulletButton:hover {
+  background-color: #70f792;
+}
+
+.ItalicsButton {
+  padding: 5px 5px;
+  border: none;
+  background-color: #fbdd92;
+  color: white;
+  cursor: pointer;
+  border-radius: 5px;
+  margin: 5px;
+}
+
+.ItalicsButton:hover {
+  background-color: #f7c170;
+}
+
+.NotesButton {
+  padding: 5px 10px;
+  border: none;
+  background-color: #60a5ca;
+  color: white;
+  cursor: pointer;
+  border-radius: 5px;
+  margin: 5px;
+}
+
+.NotesButton:hover {
+  background-color: #1899c0;
 }
 
 .LoginFields {
