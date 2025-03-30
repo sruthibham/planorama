@@ -647,5 +647,75 @@ def update_settings(user_id):
     return jsonify({"message": "Settings updated successfully"}), 200
 
 
+# TEAMS ------------------------------------------------
+class Teams(db.Model):
+    teamID = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    teamName = db.Column(db.String(64), nullable=False)
+    owner = db.Column(db.String(64), nullable=False)
+    members = db.Column(db.Text, nullable=True)
+
+    def get_members(self):
+        return json.loads(self.members) if self.members else []
+
+    def add_member(self, username):
+        members = self.get_members()
+        if username not in members:
+            members.append(username)
+            self.members = json.dumps(members)
+            db.session.commit()
+
+with app.app_context():
+    db.create_all()
+
+# Create a team based on a name, with only member being the creator
+@app.route("/createteam", methods=["POST"])
+def createTeam():
+    data = request.json
+    new_team = Teams(
+        teamName=data.get("teamName"), 
+        owner=currentUser, 
+        members=json.dumps([currentUser])
+    )
+    
+    db.session.add(new_team)
+    db.session.commit()
+    return jsonify(data)
+
+# Get all teams for a certain user
+@app.route("/getteams", methods=["GET"])
+def getTeams():
+    global currentUser
+    teams = Teams.query.all()
+    user_teams = [team for team in teams if currentUser in team.get_members()]
+
+    return jsonify([{
+        "teamID": team.teamID,
+        "teamName": team.teamName,
+        "owner": team.owner,
+        "members": team.get_members()
+    } for team in user_teams])
+
+# Get the information of a team based on ID
+@app.route("/getteam", methods=["GET"])
+def getTeamFromID():
+    teamID = request.args.get("teamID")
+    team = Teams.query.get(teamID)
+
+    return jsonify({
+        "teamID": team.teamID,
+        "teamName": team.teamName,
+        "owner": team.owner,
+        "members": team.get_members()
+    })
+
+# Delete a team from database
+@app.route("/deleteteam", methods=["POST"])
+def delTeam():
+    data = request.json
+    team = Teams.query.get(data["teamID"])
+    db.session.delete(team)
+    db.session.commit()
+    return jsonify(data)
+
 if __name__ == "__main__":
     app.run(debug=True)

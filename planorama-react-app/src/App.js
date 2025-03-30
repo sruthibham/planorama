@@ -1,7 +1,7 @@
 import './App.css';
 import ProfilePage from './ProfilePage';
 import SettingsPage from './SettingsPage';
-import { BrowserRouter as Router, Routes, Route, useNavigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, useNavigate, useParams } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import { GlobalProvider, useGlobal } from "./GlobalContext";
 import { IoSettingsOutline } from "react-icons/io5";
@@ -950,13 +950,159 @@ function LogInPage() {
   );
 }
 
+function TeamsPage() {
+  const navigate = useNavigate();
+  const [ teamList, setTeamList ] = useState([]);
+  const [ showFields, setShowFields ] = useState(false);
+  const [ loggedIn, setLoggedIn ] = useState(false);
+  const [ teamName, setTeamName ] = useState("");
+  const {user} = useGlobal();
+
+  // Open and close text field
+  const handleOpen = () => {
+    setShowFields(true);
+  }
+  const handleClose = () => {
+    setShowFields(false);
+    setTeamName("");
+  }
+
+  // Create new team
+  const handleCreate = () => {
+    axios.post("http://127.0.0.1:5000/createteam", { teamName: teamName })
+    .then((response) => {
+      setTeamList([...teamList, response.data]);
+    });
+  }
+
+  // Update team page when changing user
+  useEffect(() => {
+    if (user !== "Guest") {
+       setLoggedIn(true);
+    } else {
+       setLoggedIn(false);
+    }
+  
+    axios.get("http://127.0.0.1:5000/getteams")
+    .then(response => {
+      setTeamList(response.data);
+    })
+    .catch(error => console.error("Error fetching teams:", error));
+  }, [ user]);
+
+  return (
+    <div>
+    <div className="Headers">
+      <h1>Teams</h1>
+      { loggedIn && !showFields && <button className="Button" onClick={handleOpen}>Create Team</button> }
+      { loggedIn && showFields && (
+          <div className="Container">
+            <input
+              type="text"
+              placeholder="Team name"
+              value={teamName}
+              onChange={(e) => setTeamName(e.target.value)}
+              className='TextFields'
+            />
+            <div className="ButtonContainer">
+              <button onClick={handleClose}>Cancel</button>
+              <button onClick={handleCreate}>Create</button>
+            </div>
+          </div>
+        )
+      }
+      { !loggedIn &&
+        <h3 style={{textAlign: "center"}}>Log in to make or join teams!</h3>
+      } 
+    </div>
+    
+      <div className="TeamContainer">
+      {teamList.map(team => (
+        <button key={team.teamID} onClick={() => navigate(`/team/${team.teamID}`)} style={{
+          padding: "12px 20px",
+          margin: "8px",
+        }}>{team.teamName}</button>
+      ))}
+      </div>
+    </div>
+  )
+}
+
+const TeamPage = () => {
+  const { teamID } = useParams();
+  const navigate = useNavigate();
+  const [ team, setTeam ] = useState(null);
+  const { user } = useGlobal();
+  const [ showConfirm, setShowConfirm ] = useState(false);
+
+  useEffect(() => {
+    axios.get(`http://127.0.0.1:5000/getteam?teamID=${teamID}`)
+      .then(response => {
+        setTeam(response.data);
+      })
+      .catch(error => console.error("Error fetching team:", error));
+  }, [teamID]);
+
+  const handleOpenConfirm = () => {
+    if (showConfirm) {
+      setShowConfirm(false);
+    } else {
+      setShowConfirm(true);
+    }
+  }
+
+  const handleDelete = () => {
+    axios.post("http://127.0.0.1:5000/deleteteam", {teamID: teamID})
+    .then((response) => {
+      navigate("/teams")
+    })
+  }
+
+  if (!team) return <h3 className='Headers'>Loading team...</h3>;
+
+  return (
+    <div>
+      <div className="Headers">
+        <h1>- {team.teamName} -</h1>
+        <button onClick={() => navigate("/teams")}>Back</button>
+      </div>
+      <h3 className='Headers' style={{"marginBottom":20}}>Leader: {team.owner}</h3>
+      <div className='MemberList'> 
+        <h4>Members: </h4>
+        <ul>
+          {team.members.map((member, index) => (
+            <li key={index}>{member}</li>
+          ))}
+        </ul>
+      </div>
+      <div className='AddMember'>      
+        <button>Add member</button>
+      </div>
+      { user == team.owner && (
+      <div className='AddMember'>      
+        <button style={{"marginTop":20, backgroundColor: "red"}} onClick={handleOpenConfirm}>Delete Team</button>
+      </div>
+      )}
+      { user == team.owner && showConfirm && (
+        <div>
+          <p className='AddMember' style={{"marginTop":20}}>Are you sure? Team will be deleted for all members.</p>
+          <div className='AddMember'>
+            <button style={{"marginTop":10, backgroundColor:"red"}} onClick={handleDelete}>Confirm</button>
+            <button style={{"marginLeft":10, marginTop:10}}>Cancel</button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function NavigationButtons() {
   const navigate = useNavigate();
 
   return (
     <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', flexDirection: 'row', height: '3vh', padding: '10px' }}>
       <button className="Buttons" onClick={() => navigate('/')}>Planorama</button>
-
+      <button className="Buttons" style={{marginLeft: 5}}onClick={() => navigate('/teams')}>Teams</button>
       {/* Commented out these buttons because they were moved to a different menu (top right)
       You can uncomment them for testing if you want*/}
       {/* <button className="Buttons" onClick={() => navigate('/login')}>Log In</button>
@@ -984,6 +1130,8 @@ function App() {
             <Route path="/login" element={<LogInPage />} />
             <Route path="/profile" element={<ProfilePage />} />
             <Route path="/settings" element={<SettingsPage />} />
+            <Route path="/teams" element={<TeamsPage />} />
+            <Route path="/team/:teamID" element={<TeamPage />} />
           </Routes>
         </GlobalProvider>
     </Router>

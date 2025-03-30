@@ -553,6 +553,63 @@ button:hover {
   background-color: #555;
 }
 
+.Headers {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 90%;
+  padding: 10px;
+  margin: 0 auto;
+}
+
+.TeamContainer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 20px;
+  width: 90%;
+  margin: 0 auto;
+}
+
+.Container {
+  position: relative;
+  display: inline-block;
+}
+.ButtonContainer {
+  position: absolute;
+  bottom: -10px;
+  right: -10px;
+  display: flex;
+  gap: 5px; 
+}
+
+.MemberList {
+  display: flex;
+  flex-direction: column;
+  width: 90%;
+  margin: auto;
+}
+
+.MemberList h4 {
+  margin: 0;
+  padding: 0;
+}
+
+.MemberList ul {
+  margin-top: 0px;
+  margin-bottom: 15px;
+}
+
+.MemberList li {
+  margin-top: 8px;
+  margin-bottom: 0px;
+}
+
+.AddMember {
+  display: flex;
+  width: 90%;
+  margin: auto;
+}
 
 /* --- Time Log Styling --- */
 .TimeLogSection {
