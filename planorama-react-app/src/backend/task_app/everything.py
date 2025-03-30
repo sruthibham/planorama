@@ -558,7 +558,17 @@ class Teams(db.Model):
     teamID = db.Column(db.Integer, primary_key=True, autoincrement=True)
     teamName = db.Column(db.String(64), nullable=False)
     owner = db.Column(db.String(64), nullable=False)
-    members = db.Column(db.String(64), nullable=True)
+    members = db.Column(db.Text, nullable=True)
+
+    def get_members(self):
+        return json.loads(self.members) if self.members else []
+
+    def add_member(self, username):
+        members = self.get_members()
+        if username not in members:
+            members.append(username)
+            self.members = json.dumps(members)
+            db.session.commit()
 
 with app.app_context():
     db.create_all()
@@ -569,7 +579,7 @@ def createTeam():
     new_team = Teams(
         teamName=data.get("teamName"), 
         owner=currentUser, 
-        members=currentUser
+        members=json.dumps([currentUser])
     )
     
     db.session.add(new_team)
@@ -579,13 +589,15 @@ def createTeam():
 @app.route("/getteams", methods=["GET"])
 def getTeams():
     global currentUser
-    teams = Teams.query.filter(Teams.members == currentUser)
+    teams = Teams.query.all()
+    user_teams = [team for team in teams if currentUser in team.get_members()]
+
     return jsonify([{
         "teamID": team.teamID,
         "teamName": team.teamName,
         "owner": team.owner,
-        "members": team.members
-    } for team in teams])
+        "members": team.get_members()
+    } for team in user_teams])
 
 if __name__ == "__main__":
     app.run(debug=True)

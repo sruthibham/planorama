@@ -869,8 +869,8 @@ function TeamsPage() {
   // Create new team
   const handleCreate = () => {
     axios.post("http://127.0.0.1:5000/createteam", { teamName: teamName })
-    .then(() => {
-      setTeamList([...teamList, teamName]);
+    .then((response) => {
+      setTeamList([...teamList, response.data]);
     });
   }
 
