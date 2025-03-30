@@ -1,7 +1,7 @@
 import './App.css';
 import ProfilePage from './ProfilePage';
 import SettingsPage from './SettingsPage';
-import { BrowserRouter as Router, Routes, Route, useNavigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, useNavigate, useParams } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import { GlobalProvider, useGlobal } from "./GlobalContext";
 import { IoSettingsOutline } from "react-icons/io5";
@@ -850,11 +850,14 @@ function LogInPage() {
 }
 
 function TeamsPage() {
+  const navigate = useNavigate();
   const [ teamList, setTeamList ] = useState([]);
   const [ showFields, setShowFields ] = useState(false);
   const [ loggedIn, setLoggedIn ] = useState(false);
   const [ teamName, setTeamName ] = useState("");
   const {user} = useGlobal();
+
+  // Open and close text field
   const handleOpen = () => {
     setShowFields(true);
   }
@@ -863,13 +866,15 @@ function TeamsPage() {
     setTeamName("");
   }
 
+  // Create new team
   const handleCreate = () => {
     axios.post("http://127.0.0.1:5000/createteam", { teamName: teamName })
     .then(() => {
       setTeamList([...teamList, teamName]);
     });
   }
-  
+
+  // Update team page when changing user
   useEffect(() => {
     if (user !== "Guest") {
        setLoggedIn(true);
@@ -908,13 +913,11 @@ function TeamsPage() {
       { !loggedIn &&
         <h3 style={{textAlign: "center"}}>Log in to make or join teams!</h3>
       } 
-        
-      
     </div>
     
       <div className="TeamContainer">
       {teamList.map(team => (
-        <button key={team.teamID} style={{
+        <button key={team.teamID} onClick={() => navigate(`/team/${team.teamID}`)} style={{
           padding: "12px 20px",
           margin: "8px",
         }}>{team.teamName}</button>
@@ -922,6 +925,29 @@ function TeamsPage() {
       </div>
     </div>
   )
+}
+
+const TeamPage = () => {
+  const { teamID } = useParams();
+  const navigate = useNavigate();
+
+  return (
+    <div>
+      <div className="Headers">
+        <h1>Team {teamID}</h1>
+        <button onClick={() => navigate("/teams")}>Back</button>
+      </div>
+      <h3 className='Headers'>Leader: leader name here</h3>
+      <div className='MemberList'> 
+        <h4>Members: </h4>
+        <li>map members here</li>
+        <li>2</li>
+      </div>
+      <div className='AddMember'>      
+        <button>Add member</button>
+      </div>
+    </div>
+  );
 }
 
 function NavigationButtons() {
@@ -959,6 +985,7 @@ function App() {
             <Route path="/profile" element={<ProfilePage />} />
             <Route path="/settings" element={<SettingsPage />} />
             <Route path="/teams" element={<TeamsPage />} />
+            <Route path="/team/:teamID" element={<TeamPage />} />
           </Routes>
         </GlobalProvider>
     </Router>

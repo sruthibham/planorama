@@ -582,3 +582,27 @@ button:hover {
   display: flex;
   gap: 5px; 
 }
+
+.MemberList {
+  display: flex;
+  flex-direction: column;
+  width: 90%;
+  margin: auto;
+  margin-bottom: 10px;
+}
+
+.MemberList h4 {
+  margin: 0;
+  padding: 0;
+}
+
+.MemberList li {
+  margin-top: 8px;
+  margin-bottom: 0px;
+}
+
+.AddMember {
+  display: flex;
+  width: 90%;
+  margin: auto;
+}
