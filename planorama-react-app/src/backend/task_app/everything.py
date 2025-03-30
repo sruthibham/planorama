@@ -46,6 +46,7 @@ class Task(db.Model):
     status = db.Column(db.String(20), default="To-Do")
     subtasks = db.Column(db.Text, default="[]", nullable=True)
     start_date = db.Column(db.String(50), nullable=True)  # New Field
+    time_logs = db.Column(db.Text, default="[]", nullable=True)
 
     def get_subtasks(self):
         try:
@@ -55,6 +56,19 @@ class Task(db.Model):
 
     def set_subtasks(self, subtasks_list):
         self.subtasks = json.dumps(subtasks_list)
+
+    def get_time_logs(self):
+        try:
+            return json.loads(self.time_logs) if self.time_logs else []
+        except json.JSONDecodeError:
+            return []
+
+    def set_time_logs(self, logs_list):
+        self.time_logs = json.dumps(logs_list)
+
+    def get_total_time_spent(self):
+        return sum(entry.get("minutes", 0) for entry in self.get_time_logs())
+
 
 with app.app_context():
     db.create_all()
@@ -78,6 +92,7 @@ def get_tasks():
         "color_tag": task.color_tag,
         "status": task.status,
         "start_date": task.start_date,
+        "time_logs": task.get_time_logs(),
         "subtasks": task.get_subtasks()
     } for task in tasks])
 
@@ -96,6 +111,7 @@ def get_scheduled_tasks():
         "color_tag": task.color_tag,
         "status": task.status,
         "start_date": task.start_date,
+        "time_logs": task.get_time_logs(),
         "subtasks": task.get_subtasks()
     } for task in tasks])
 
@@ -159,6 +175,7 @@ def add_task():
         "color_tag": new_task.color_tag,
         "status": new_task.status,
         "start_date": new_task.start_date,
+        "time_logs": new_task.get_time_logs(), 
         "subtasks": new_task.get_subtasks()
     }}), 201
 
@@ -217,6 +234,8 @@ def update_task(task_id):
     task.priority = data.get("priority", task.priority)
     task.color_tag = data.get("color_tag", task.color_tag)
     task.status = data.get("status", task.status)
+    if "time_logs" in data:
+        task.set_time_logs(data["time_logs"])
     task.start_date = start_date
 
     if "subtasks" in data:
@@ -235,6 +254,8 @@ def update_task(task_id):
             "priority": task.priority,
             "color_tag": task.color_tag,
             "status": task.status,
+            "start_date": task.start_date,
+            "time_logs": task.get_time_logs(), 
             "subtasks": task.get_subtasks()
         }
     }), 200
@@ -249,6 +270,79 @@ def start_task_now(task_id):
     db.session.commit()
 
     return jsonify({"message": "Task started immediately!"}), 200
+
+@app.route("/tasks/<int:task_id>/log_time", methods=["POST"])
+def log_time(task_id):
+    task = Task.query.get(task_id)
+    if not task:
+        return jsonify({"error": "Task not found"}), 404
+
+    data = request.json
+    try:
+        minutes = int(data.get("minutes", 0))
+    except ValueError:
+        return jsonify({"error": "Time must be a number."}), 400
+
+    if minutes <= 0 or minutes > 1440:
+        return jsonify({"error": "Time must be between 1 and 1440 minutes."}), 400
+
+    logs = task.get_time_logs()
+    new_entry = {
+        "id": len(logs) + 1,
+        "minutes": minutes,
+        "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    }
+    logs.append(new_entry)
+    task.set_time_logs(logs)
+    db.session.commit()
+    return jsonify({"message": "Time logged.", "logs": logs, "total": task.get_total_time_spent()})
+
+@app.route("/tasks/<int:task_id>/log_time/<int:log_id>", methods=["PUT"])
+def edit_log_time(task_id, log_id):
+    task = Task.query.get(task_id)
+    if not task:
+        return jsonify({"error": "Task not found"}), 404
+    
+    data = request.json
+    try:
+        minutes = int(data.get("minutes", 0))
+    except ValueError:
+        return jsonify({"error": "Time must be a number."}), 400
+
+    if minutes <= 0 or minutes > 1440:
+        return jsonify({"error": "Time must be between 1 and 1440 minutes."}), 400
+
+    logs = task.get_time_logs()
+    for log in logs:
+        if log["id"] == log_id:
+            log["minutes"] = minutes
+            break
+    else:
+        return jsonify({"error": "Log entry not found"}), 404
+
+    task.set_time_logs(logs)
+    db.session.commit()
+    return jsonify({"message": "Log updated.", "logs": logs, "total": task.get_total_time_spent()})
+
+@app.route("/tasks/<int:task_id>/log_time/<int:log_id>", methods=["DELETE"])
+def delete_log_time(task_id, log_id):
+    task = Task.query.get(task_id)
+    if not task:
+        return jsonify({"error": "Task not found"}), 404
+
+    logs = task.get_time_logs()
+    logs = [log for log in logs if log["id"] != log_id]
+
+    task.set_time_logs(logs)
+    db.session.commit()
+    return jsonify({"message": "Log deleted.", "logs": logs, "total": task.get_total_time_spent()})
+
+@app.route("/time_summary", methods=["GET"])
+def time_summary():
+    global currentUser
+    tasks = Task.query.filter_by(user=currentUser).all()
+    total = sum(task.get_total_time_spent() for task in tasks)
+    return jsonify({"total_time_spent": total})
 
 
 

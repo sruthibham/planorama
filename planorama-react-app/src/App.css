@@ -610,3 +610,51 @@ button:hover {
   width: 90%;
   margin: auto;
 }
+
+/* --- Time Log Styling --- */
+.TimeLogSection {
+  width: 100%;
+  margin-top: 20px;
+  padding: 10px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  background-color: #f9f9f9;
+}
+
+.TimeLogEntry {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 10px;
+  margin-bottom: 5px;
+  background-color: #fff;
+  border-radius: 5px;
+  border: 1px solid #ccc;
+}
+
+.TimeLogEntry button {
+  background-color: #e74c3c;
+  color: white;
+  border: none;
+  padding: 5px 10px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.TimeLogEntry button:hover {
+  background-color: #c0392b;
+}
+
+.TimeLogSection input[type="number"] {
+  width: 100px;
+  padding: 6px;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+}
+
+/* Reuse ErrorMessage for validation errors */
+.ErrorMessage {
+  color: red;
+  font-size: 14px;
+  margin-top: 5px;
+}

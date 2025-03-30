@@ -5,6 +5,7 @@ import { BrowserRouter as Router, Routes, Route, useNavigate, useParams } from '
 import { useState, useEffect } from 'react';
 import { GlobalProvider, useGlobal } from "./GlobalContext";
 import { IoSettingsOutline } from "react-icons/io5";
+import { useRef } from 'react';
 import axios from 'axios';
 
 
@@ -73,6 +74,7 @@ function TaskPage() {
   const [scheduledTasks, setScheduledTasks] = useState([]);
   const [showModal, setShowModal] = useState(false);
   const [newSubtaskName, setNewSubtaskName] = useState("");
+  const [expandedTaskId, setExpandedTaskId] = useState(null);
   const [newTask, setNewTask] = useState({
     username: "",
     name: "",
@@ -82,7 +84,9 @@ function TaskPage() {
     color_tag: "",
     status: "To-Do",
     start_date: "",
-    subtasks: []
+    time_log: "", // This will store the time log for the task
+    subtasks: [],
+
   });
   const [editingTask, setEditingTask] = useState(null);
   //for filtering by priority
@@ -94,6 +98,10 @@ function TaskPage() {
   const [error, setError] = useState("");
   const [warning, setWarning] = useState("");
   const [taskWarning, setTaskWarning] = useState("");
+  const [timeLogInput, setTimeLogInput] = useState("");
+  const [timeLogError, setTimeLogError] = useState("");
+  const [selectedTaskLogs, setSelectedTaskLogs] = useState([]);
+  const [totalTimeSpent, setTotalTimeSpent] = useState(0);
   const [isAddingSubtask, setIsAddingSubtask] = useState(false);
   const COLORS = [
     { name: "red", value: "#fbb9c5" },
@@ -124,6 +132,10 @@ function TaskPage() {
       })
       .catch(error => console.error("Error fetching tasks:", error));
   }, [user]);
+
+  const getTotalTime = (task) => {
+    return (task.time_logs || []).reduce((sum, log) => sum + (log.minutes || 0), 0);
+  };
 
   const handleAddSubtask = () => {
     if (!newSubtaskName.trim()) return;
@@ -248,6 +260,7 @@ function TaskPage() {
       color_tag: newTask.color_tag,
       status: newTask.status,
       start_date: newTask.start_date,
+      time_log: newTask.time_log, 
       subtasks: newTask.subtasks
     })
       .then(response => {
@@ -274,6 +287,7 @@ function TaskPage() {
           color_tag: "",
           status: "To-Do",
           start_date: "",
+          time_log: "", // Reset time log
           subtasks: []
         });
   
@@ -297,6 +311,49 @@ function TaskPage() {
         console.error("Error starting task early:", error);
       });
   };
+
+  const handleAddTimeLog = (taskId) => {
+    const minutes = parseInt(timeLogInput);
+    if (isNaN(minutes)) {
+      setTimeLogError("Please enter a valid number.");
+      return;
+    }
+    if (minutes <= 0 || minutes > 1440) {
+      setTimeLogError("Time must be between 1 and 1440 minutes.");
+      return;
+    }
+    axios.post(`http://127.0.0.1:5000/tasks/${taskId}/log_time`, { minutes })
+      .then(res => {
+        setSelectedTaskLogs(res.data.logs);
+        setTotalTimeSpent(res.data.total);
+        setTimeLogInput("");
+        setTimeLogError("");
+      })
+      .catch(err => {
+        console.error(err);
+      });
+  };
+  
+  const handleDeleteTimeLog = (taskId, logId) => {
+    axios.delete(`http://127.0.0.1:5000/tasks/${taskId}/log_time/${logId}`)
+      .then(res => {
+        setSelectedTaskLogs(res.data.logs);
+        setTotalTimeSpent(res.data.total);
+      })
+      .catch(err => console.error(err));
+  };
+  
+  const fetchTimeLogs = (taskId) => {
+    const task = tasks.find(t => t.id === taskId);
+    setEditingTask(task);
+    setShowModal(true);
+    axios.get(`http://127.0.0.1:5000/tasks/${taskId}`)
+      .then(res => {
+        setSelectedTaskLogs(res.data.time_logs || []);
+        setTotalTimeSpent(res.data.total_time || 0);
+      })
+      .catch(err => console.error(err));
+  };
   // modify task in DB and UI
   const handleUpdateTask = () =>{
     axios.put(`http://127.0.0.1:5000/tasks/${editingTask.id}`, {
@@ -308,6 +365,7 @@ function TaskPage() {
       color_tag: editingTask.color_tag,
       status: editingTask.status,
       start_date: editingTask.start_date,
+      time_log: editingTask.time_log, 
       subtasks: editingTask.subtasks || []
     })
       .then(response => {
@@ -396,6 +454,7 @@ function TaskPage() {
               <option value="Completed">Completed</option>
             </select>
           </div>
+          <div className="TaskCell">Time Spent</div>
           <div className="TaskCell">Deadline</div>
           <div className="TaskCell">Make Changes</div>
         </div>
@@ -431,6 +490,7 @@ function TaskPage() {
             </td>
             <div className="TaskCell">{task.priority}</div>
             <div className="TaskCell">{task.status}</div>
+            <TaskTimeCell task={task} onLogClick={handleEditClick} />
             <div className="TaskCell">{formatDate(task.due_time)}</div>
             <div className="TaskCell">
               {deleteButtons(task.id)}
@@ -490,6 +550,7 @@ function TaskPage() {
                 color_tag: "",
                 status: "To-Do",
                 start_date: "",
+                time_log: "", 
                 subtasks: []
               });
               setNewSubtaskName("");
@@ -525,6 +586,28 @@ function TaskPage() {
               onChange={handleChange}
               className="TextFields"
             />
+            <div className="TimeLogSection">
+              <h3>Time Logs</h3>
+              {selectedTaskLogs.map(log => (
+                <div key={log.id} className="TimeLogEntry">
+                  <span>{log.minutes} min - {log.timestamp}</span>
+                  <button onClick={() => handleDeleteTimeLog(editingTask.id, log.id)}>Delete</button>
+                </div>
+              ))}
+              <div style={{ display: "flex", gap: "10px", alignItems: "center", marginTop: "10px" }}>
+                <input
+                  type="number"
+                  placeholder="Minutes"
+                  value={timeLogInput}
+                  onChange={(e) => setTimeLogInput(e.target.value)}
+                  className="TextFields"
+                />
+                <button className="SubtaskButton SubtaskConfirmButton" onClick={() => handleAddTimeLog(editingTask.id)}>Log Time</button>
+              </div>
+              {timeLogError && <p className="ErrorMessage">{timeLogError}</p>}
+              <p><strong>Total Time Spent:</strong> {totalTimeSpent} min</p>
+            </div>
+            <h3>Total Time Spent Across All Tasks: {totalTimeSpent} min</h3>
             <select name="priority" onChange={handleChange} className="TextFields"
               value={editingTask ? editingTask.priority : newTask.priority}
             >
@@ -731,11 +814,29 @@ function TaskPage() {
                 priority: "Medium",
                 color_tag: "",
                 status: "To-Do",
+                start_date: "",
+                time_log: "", // Reset time log
                 subtasks:[]});setNewSubtaskName("");setIsAddingSubtask(false);setShowModal(false);}} className="Buttons">Cancel</button>
             </div>
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+function TaskTimeCell({ task, onLogClick }) {
+  const total = (task.time_logs || []).reduce((sum, log) => sum + (log.minutes || 0), 0);
+  return (
+    <div className="TaskCell">
+      <div><strong>{total} min</strong></div>
+      <button
+        className="SubtaskButton SubtaskConfirmButton"
+        onClick={() => onLogClick(task.id)}
+        style={{ marginTop: "4px" }}
+      >
+        Log Time
+      </button>
     </div>
   );
 }
