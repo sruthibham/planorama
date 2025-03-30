@@ -588,12 +588,16 @@ button:hover {
   flex-direction: column;
   width: 90%;
   margin: auto;
-  margin-bottom: 10px;
 }
 
 .MemberList h4 {
   margin: 0;
   padding: 0;
+}
+
+.MemberList ul {
+  margin-top: 0px;
+  margin-bottom: 15px;
 }
 
 .MemberList li {

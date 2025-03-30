@@ -573,6 +573,7 @@ class Teams(db.Model):
 with app.app_context():
     db.create_all()
 
+# Create a team based on a name, with only member being the creator
 @app.route("/createteam", methods=["POST"])
 def createTeam():
     data = request.json
@@ -586,6 +587,7 @@ def createTeam():
     db.session.commit()
     return jsonify(data)
 
+# Get all teams for a certain user
 @app.route("/getteams", methods=["GET"])
 def getTeams():
     global currentUser
@@ -598,6 +600,19 @@ def getTeams():
         "owner": team.owner,
         "members": team.get_members()
     } for team in user_teams])
+
+# Get the information of a team based on ID
+@app.route("/getteam", methods=["GET"])
+def getTeamFromID():
+    teamID = request.args.get("teamID")
+    team = Teams.query.get(teamID)
+
+    return jsonify({
+        "teamID": team.teamID,
+        "teamName": team.teamName,
+        "owner": team.owner,
+        "members": team.get_members()
+    })
 
 if __name__ == "__main__":
     app.run(debug=True)

@@ -930,18 +930,32 @@ function TeamsPage() {
 const TeamPage = () => {
   const { teamID } = useParams();
   const navigate = useNavigate();
+  const [ team, setTeam ] = useState(null);
+
+  useEffect(() => {
+    axios.get(`http://127.0.0.1:5000/getteam?teamID=${teamID}`)
+      .then(response => {
+        setTeam(response.data);
+      })
+      .catch(error => console.error("Error fetching team:", error));
+  }, [teamID]);
+
+  if (!team) return <h3 className='Headers'>Loading team...</h3>;
 
   return (
     <div>
       <div className="Headers">
-        <h1>Team {teamID}</h1>
+        <h1>- {team.teamName} -</h1>
         <button onClick={() => navigate("/teams")}>Back</button>
       </div>
-      <h3 className='Headers'>Leader: leader name here</h3>
+      <h3 className='Headers' style={{"marginBottom":20}}>Leader: {team.owner}</h3>
       <div className='MemberList'> 
         <h4>Members: </h4>
-        <li>map members here</li>
-        <li>2</li>
+        <ul>
+          {team.members.map((member, index) => (
+            <li key={index}>{member}</li>
+          ))}
+        </ul>
       </div>
       <div className='AddMember'>      
         <button>Add member</button>
