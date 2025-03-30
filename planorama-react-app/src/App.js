@@ -852,6 +852,7 @@ function LogInPage() {
 function TeamsPage() {
   const [ teamList, setTeamList ] = useState([]);
   const [ showFields, setShowFields ] = useState(false);
+  const [ loggedIn, setLoggedIn ] = useState(false);
   const [ teamName, setTeamName ] = useState("");
   const {user} = useGlobal();
   const handleOpen = () => {
@@ -864,19 +865,31 @@ function TeamsPage() {
 
   const handleCreate = () => {
     axios.post("http://127.0.0.1:5000/createteam", { teamName: teamName })
-    .then(response => {
+    .then(() => {
       setTeamList([...teamList, teamName]);
     });
   }
   
+  useEffect(() => {
+    if (user !== "Guest") {
+       setLoggedIn(true);
+    } else {
+       setLoggedIn(false);
+    }
+  
+    axios.get("http://127.0.0.1:5000/getteams")
+    .then(response => {
+      setTeamList(response.data);
+    })
+    .catch(error => console.error("Error fetching teams:", error));
+  }, [teamList, user]);
 
   return (
     <div>
     <div className="Headers">
       <h1>Teams</h1>
-      
-        { !showFields && <button className="Button" onClick={handleOpen}>Create Team</button> }
-        { showFields && (
+      { loggedIn && !showFields && <button className="Button" onClick={handleOpen}>Create Team</button> }
+      { loggedIn && showFields && (
           <div className="Container">
             <input
               type="text"
@@ -890,17 +903,22 @@ function TeamsPage() {
               <button onClick={handleCreate}>Create</button>
             </div>
           </div>
-        )  
-        }
+        )
+      }
+      { !loggedIn &&
+        <h3 style={{textAlign: "center"}}>Log in to make or join teams!</h3>
+      } 
+        
       
     </div>
     
       <div className="TeamContainer">
-        {teamList.map((team, index) => (
-          <button key={index} style={{padding: 20}}>
-            {team}
-          </button>
-        ))}
+      {teamList.map(team => (
+        <button key={team.teamID} style={{
+          padding: "12px 20px",
+          margin: "8px",
+        }}>{team.teamName}</button>
+      ))}
       </div>
     </div>
   )

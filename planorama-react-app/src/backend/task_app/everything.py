@@ -555,7 +555,7 @@ def update_settings(user_id):
 
 # TEAMS ------------------------------------------------
 class Teams(db.Model):
-    teamID = db.Column(db.Integer, primary_key=True)
+    teamID = db.Column(db.Integer, primary_key=True, autoincrement=True)
     teamName = db.Column(db.String(64), nullable=False)
     owner = db.Column(db.String(64), nullable=False)
     members = db.Column(db.String(64), nullable=True)
@@ -566,20 +566,26 @@ with app.app_context():
 @app.route("/createteam", methods=["POST"])
 def createTeam():
     data = request.json
-    tmID = 1
-    while 1:
-        try:
-            db.session.add(Teams(teamID=tmID, teamName=data.get("teamName"), owner=currentUser, members=currentUser))
-            db.session.commit()
-            break
-        except:
-            db.session.rollback()
-            tmID = tmID + 1
-        
+    new_team = Teams(
+        teamName=data.get("teamName"), 
+        owner=currentUser, 
+        members=currentUser
+    )
+    
+    db.session.add(new_team)
     db.session.commit()
     return jsonify(data)
 
-
+@app.route("/getteams", methods=["GET"])
+def getTeams():
+    global currentUser
+    teams = Teams.query.filter(Teams.members == currentUser)
+    return jsonify([{
+        "teamID": team.teamID,
+        "teamName": team.teamName,
+        "owner": team.owner,
+        "members": team.members
+    } for team in teams])
 
 if __name__ == "__main__":
     app.run(debug=True)
