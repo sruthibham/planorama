@@ -12,7 +12,6 @@ import time
 
 app = Flask(__name__)
 CORS(app)
-
 # Update current user whenever refreshed
 path = os.path.join(os.path.dirname(os.path.abspath(__file__)),"currentUser.txt")
 word = open(path).read()
@@ -47,6 +46,7 @@ class Task(db.Model):
     subtasks = db.Column(db.Text, default="[]", nullable=True)
     start_date = db.Column(db.String(50), nullable=True)  # New Field
     time_logs = db.Column(db.Text, default="[]", nullable=True)
+    order_index = db.Column(db.Integer, nullable=False, default=0)
 
     def get_subtasks(self):
         try:
@@ -77,7 +77,8 @@ with app.app_context():
 def get_tasks():
     global currentUser
     tasks = Task.query.filter(Task.user == currentUser, 
-                              (Task.start_date == None) | (Task.start_date <= datetime.today().strftime("%Y-%m-%d"))).all()
+                              (Task.start_date == None) | (Task.start_date <= datetime.today().strftime("%Y-%m-%d")))\
+                        .order_by(Task.order_index).all()
     usersTasks = []
     # for task in tasks:
     #     if (task.user == currentUser):
@@ -93,7 +94,8 @@ def get_tasks():
         "status": task.status,
         "start_date": task.start_date,
         "time_logs": task.get_time_logs(),
-        "subtasks": task.get_subtasks()
+        "subtasks": task.get_subtasks(),
+        "order_index": task.order_index
     } for task in tasks])
 
 # Retrieve SCHEDULED tasks
@@ -151,6 +153,12 @@ def add_task():
 
     subtasks = data.get("subtasks", [])
 
+    max_index = db.session.query(db.func.max(Task.order_index)).filter_by(user=data["username"]).scalar()
+    if max_index is None:
+        max_index = 0
+    else:
+        max_index += 1
+
     new_task = Task(
         user=data["username"],
         name=data["name"],
@@ -159,9 +167,11 @@ def add_task():
         priority=data["priority"],
         color_tag=data.get("color_tag"),
         status=data.get("status", "To-Do"),
-        start_date=start_date
+        start_date=start_date,
+        order_index=max_index
     )
     new_task.set_subtasks(subtasks)
+
 
     db.session.add(new_task)
     db.session.commit()
@@ -176,8 +186,22 @@ def add_task():
         "status": new_task.status,
         "start_date": new_task.start_date,
         "time_logs": new_task.get_time_logs(), 
-        "subtasks": new_task.get_subtasks()
+        "subtasks": new_task.get_subtasks(),
+        "order_index": new_task.order_index
     }}), 201
+
+@app.route("/tasks/reorder", methods=["POST"])
+def reorder_tasks():
+    data = request.json  # Expects list of task IDs in new order
+    if not isinstance(data, list):
+        return jsonify({"error": "Invalid data format"}), 400
+
+    for index, task_id in enumerate(data):
+        task = Task.query.get(task_id)
+        if task and task.user == currentUser:
+            task.order_index = index
+    db.session.commit()
+    return jsonify({"message": "Task order updated"}), 200
 
 # Move scheduled tasks to active at midnight
 def auto_move_tasks():
@@ -188,7 +212,6 @@ def auto_move_tasks():
             for task in tasks:
                 task.start_date = None  # Move to active
             db.session.commit()
-        time.sleep(86400)  # Run every 24 hours
 # Start the background thread
 threading.Thread(target=auto_move_tasks, daemon=True).start()
 
@@ -237,7 +260,6 @@ def update_task(task_id):
     if "time_logs" in data:
         task.set_time_logs(data["time_logs"])
     task.start_date = start_date
-
     if "subtasks" in data:
         task.set_subtasks(data["subtasks"])
 
