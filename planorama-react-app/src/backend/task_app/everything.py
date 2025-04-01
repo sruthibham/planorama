@@ -212,6 +212,7 @@ def auto_move_tasks():
             for task in tasks:
                 task.start_date = None  # Move to active
             db.session.commit()
+        time.sleep(86400) # Run every 24 hours
 # Start the background thread
 threading.Thread(target=auto_move_tasks, daemon=True).start()
 
