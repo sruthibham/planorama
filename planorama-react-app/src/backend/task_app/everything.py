@@ -726,7 +726,6 @@ def searchUsers():
         return jsonify([])
     users = UserLogin.query.filter(UserLogin.username.ilike(f"%{query}%")).all()
     usernames = [user.username for user in users]
-    print(usernames)
     return jsonify(usernames)
 
 if __name__ == "__main__":
