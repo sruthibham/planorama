@@ -610,6 +610,11 @@ button:hover {
   margin: auto;
 }
 
+.centered {
+  display: grid;
+  place-items: center; 
+}
+
 .user-row {
   border-radius: 1;
   width: 300px;

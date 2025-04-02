@@ -708,6 +708,19 @@ def getTeamFromID():
         "members": team.get_members()
     })
 
+# Get profile information based on username
+@app.route("/getprof", methods=["GET"])
+def getProf():
+    usern = request.args.get("usern")
+    user = User.query.filter_by(username=usern).first()
+
+    return jsonify({
+        "id": user.id,
+        "username": user.username,
+        "profile_picture": user.profile_picture,
+        "achievements": user.achievements
+    })
+
 # Delete a team from database
 @app.route("/deleteteam", methods=["POST"])
 def delTeam():
@@ -725,6 +738,7 @@ def searchUsers():
     if (query==''):
         return jsonify([])
     users = UserLogin.query.filter(UserLogin.username.ilike(f"%{query}%")).all()
+    users = users[:15]
     usernames = [user.username for user in users]
     return jsonify(usernames)
 

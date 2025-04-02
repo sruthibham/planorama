@@ -35,7 +35,6 @@ function DisplayUsername() {
     axios.get("http://127.0.0.1:5000/logout")
       .then(response => {
         setUser(response.data);
-        navigate('/')
     })
   }
 
@@ -993,29 +992,29 @@ function TeamsPage() {
 
   return (
     <div>
-    <div className="Headers">
-      <h1>Teams</h1>
-      { loggedIn && !showFields && <button className="Button" onClick={handleOpen}>Create Team</button> }
-      { loggedIn && showFields && (
-          <div className="Container">
-            <input
-              type="text"
-              placeholder="Team name"
-              value={teamName}
-              onChange={(e) => setTeamName(e.target.value)}
-              className='TextFields'
-            />
-            <div className="ButtonContainer">
-              <button onClick={handleClose}>Cancel</button>
-              <button onClick={handleCreate}>Create</button>
+      <div className="Headers">
+        <h1>Teams</h1>
+        { loggedIn && !showFields && <button className="Button" onClick={handleOpen}>Create Team</button> }
+        { loggedIn && showFields && (
+            <div className="Container">
+              <input
+                type="text"
+                placeholder="Team name"
+                value={teamName}
+                onChange={(e) => setTeamName(e.target.value)}
+                className='TextFields'
+              />
+              <div className="ButtonContainer">
+                <button onClick={handleClose}>Cancel</button>
+                <button onClick={handleCreate}>Create</button>
+              </div>
             </div>
-          </div>
-        )
-      }
-      { !loggedIn &&
-        <h3 style={{textAlign: "center"}}>Log in to make or join teams!</h3>
-      } 
-    </div>
+          )
+        }
+        { !loggedIn &&
+          <h3 style={{textAlign: "center"}}>Log in to make or join teams!</h3>
+        } 
+      </div>
     
       <div className="TeamContainer">
       {teamList.map(team => (
@@ -1047,6 +1046,13 @@ const TeamPage = () => {
       .catch(error => console.error("Error fetching team:", error));
   }, [teamID]);
 
+
+  useEffect(() => {
+    if (user === "Guest") {
+      navigate("/teams")
+    }
+  }, [user, navigate]);
+
   const handleOpenConfirm = () => {
     if (showConfirm) {
       setShowConfirm(false);
@@ -1061,6 +1067,15 @@ const TeamPage = () => {
     } else {
       setShowSearch(true);
     }
+  }
+
+  const handleInvite = (username) => {
+    
+  }
+
+  const handleView = (username) => {
+    const camefrom = teamID
+    navigate(`/profile/${username}/from/${camefrom}`)
   }
 
   useEffect(() => {
@@ -1096,10 +1111,10 @@ const TeamPage = () => {
       </div>
       <div className='SideBySide'>
         <div className='AddMember'>      
-          {user == team.owner && <button onClick={handleOpenSearch} style={{marginBottom: 10}}>Add member</button>}
+          {user === team.owner && <button onClick={handleOpenSearch} style={{marginBottom: 10}}>Add member</button>}
         </div>
         <div className='AddMember'>
-          { user == team.owner && showSearch && (
+          { user === team.owner && showSearch && (
             <input
               style={{marginRight: 10}}
               type="text"
@@ -1109,14 +1124,14 @@ const TeamPage = () => {
               className='SearchBar'
             />
           )}
-          { user == team.owner && showSearch && query != "" && (
+          { user === team.owner && showSearch && query !== "" && (
             <div className='Column'>
               {userList.map((username, index) => (
                 <div key={index} className='user-row'>
                   {username}
                   <div style={{ display: 'flex', gap: '2px'}}>
-                    <button className='Invite'>Invite</button>
-                    <button className='Invite'>View</button>
+                    <button className='Invite' onClick={() => handleInvite(username)}>Invite</button>
+                    <button className='Invite' onClick={() => handleView(username)}>View</button>
                   </div>
                 </div>
               ))}
@@ -1125,13 +1140,14 @@ const TeamPage = () => {
         </div>
       </div>
 
+      <h2 className='AddMember' style={{marginTop:10}}>Tasks</h2>
 
-      { user == team.owner && (
-      <div className='AddMember'>      
-        <button style={{"marginTop":20, backgroundColor: "red"}} onClick={handleOpenConfirm}>Delete Team</button>
-      </div>
+      { user === team.owner && (
+        <div className='AddMember'>      
+          <button style={{"marginTop":20, backgroundColor: "red"}} onClick={handleOpenConfirm}>Delete Team</button>
+        </div>
       )}
-      { user == team.owner && showConfirm && (
+      { user === team.owner && showConfirm && (
         <div>
           <p className='AddMember' style={{"marginTop":20}}>Are you sure? Team will be deleted for all members.</p>
           <div className='AddMember'>
@@ -1143,6 +1159,93 @@ const TeamPage = () => {
     </div>
   );
 }
+
+function SearchPage() {
+  const navigate = useNavigate();
+  const { user } = useGlobal();
+  const [query, setQuery] = useState("");
+  const [ userList, setUserList ] = useState([]);
+
+  const handleView = (username) => {
+    const camefrom = "gensearch"
+    navigate(`/profile/${username}/from/${camefrom}`)
+  }
+
+  useEffect(() => {
+    axios.post("http://127.0.0.1:5000/search", {query: query})
+    .then((response) => {
+      setUserList(response.data)
+    })
+  }, [query]);
+
+  return (
+    <div className='centered'>
+      <h2>Find users</h2>
+      <input
+        type="text"
+        placeholder="Search..."
+        value={query}
+        onChange={(e) => setQuery(e.target.value)}
+        className='SearchBar'
+      />
+  
+      <div className='Column'>
+        {userList.map((username, index) => (
+          <div key={index} className='user-row'>
+            {username}
+            <div style={{ display: 'flex' }}>
+              <button className='Invite' onClick={() => handleView(username)}>View</button>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+const ViewProfile = () => {
+  const { usern, camefrom } = useParams();
+  const navigate = useNavigate();
+
+  const [profile, setProfile] = useState({ username: usern, profile_picture: '', achievements: '' });
+
+  useEffect(() => {
+    axios.get(`http://127.0.0.1:5000/getprof?usern=${usern}`)
+      .then(response => {
+        setProfile({username: response.data.usern, profile_picture: response.data.pfp, achievements: response.data.achievements })
+      })
+      .catch(error => console.error("Error fetching team:", error));
+  }, [usern]);
+
+  // Convert camefrom to link, go back
+  const handleBack = () => {
+    if (camefrom === "gensearch") {
+      navigate("/gensearch")
+    } else {
+      navigate(`/team/${camefrom}`)
+    }
+  };
+
+
+  return (
+      <div className="ProfileContainer">
+          <h2 className="ProfileTitle">{profile.username}'s Profile</h2>
+          <div className="ProfilePictureContainer">
+              <img
+                  className="ProfilePicture"
+                  src={profile.profile_picture ? `/profile_pics/${profile.profile_picture}` : '/default-profile.png'}
+                  alt="Profile"
+              />
+          </div>
+          
+          <div className="Achievements">
+              <h3>Achievements</h3>
+              <p>{profile.achievements || 'No achievements yet.'}</p>
+          </div>
+          <button onClick={handleBack}>Back</button>
+      </div>
+  );
+};
 
 function NavigationButtons() {
   const navigate = useNavigate();
@@ -1158,7 +1261,7 @@ function NavigationButtons() {
       <button className="ProfileIcon" onClick={() => navigate('/profile')}>
         <img src="/default-profile.png" alt="Profile" className="ProfileIconImage" />
       </button> */}
-      <button className='Buttons' style={{marginLeft: 5}}>Search</button>
+      <button className='Buttons' style={{marginLeft: 5}} onClick={() => navigate('/gensearch')}>Search</button>
       <div className="SettingsButton" onClick={() => navigate('/settings')}> 
         <IoSettingsOutline />
       </div>
@@ -1178,9 +1281,11 @@ function App() {
             <Route path="/createaccount" element={<CreateAccountPage />} />
             <Route path="/login" element={<LogInPage />} />
             <Route path="/profile" element={<ProfilePage />} />
+            <Route path="/profile/:usern/from/:camefrom" element={<ViewProfile />} />
             <Route path="/settings" element={<SettingsPage />} />
             <Route path="/teams" element={<TeamsPage />} />
             <Route path="/team/:teamID" element={<TeamPage />} />
+            <Route path="/gensearch" element={<SearchPage />} />
           </Routes>
         </GlobalProvider>
     </Router>
