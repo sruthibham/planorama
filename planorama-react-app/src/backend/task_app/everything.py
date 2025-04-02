@@ -717,5 +717,18 @@ def delTeam():
     db.session.commit()
     return jsonify(data)
 
+# Return users matching search
+@app.route("/search", methods=["POST"])
+def searchUsers():
+    data = request.json
+    query = data.get("query")
+    if (query==''):
+        return jsonify([])
+    users = UserLogin.query.filter(UserLogin.username.ilike(f"%{query}%")).all()
+    usernames = [user.username for user in users]
+    print(usernames)
+    return jsonify(usernames)
+
 if __name__ == "__main__":
     app.run(debug=True)
+

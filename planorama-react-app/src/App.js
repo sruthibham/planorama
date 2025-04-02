@@ -1034,6 +1034,9 @@ const TeamPage = () => {
   const [ team, setTeam ] = useState(null);
   const { user } = useGlobal();
   const [ showConfirm, setShowConfirm ] = useState(false);
+  const [ showSearch, setShowSearch ] = useState(false);
+  const [query, setQuery] = useState("");
+  const [ userList, setUserList ] = useState([]);
 
   useEffect(() => {
     axios.get(`http://127.0.0.1:5000/getteam?teamID=${teamID}`)
@@ -1050,6 +1053,21 @@ const TeamPage = () => {
       setShowConfirm(true);
     }
   }
+
+  const handleOpenSearch = () => {
+    if (showSearch) {
+      setShowSearch(false);
+    } else {
+      setShowSearch(true);
+    }
+  }
+
+  useEffect(() => {
+    axios.post("http://127.0.0.1:5000/search", {query: query})
+    .then((response) => {
+      setUserList(response.data)
+    })
+  }, [query]);
 
   const handleDelete = () => {
     axios.post("http://127.0.0.1:5000/deleteteam", {teamID: teamID})
@@ -1075,9 +1093,38 @@ const TeamPage = () => {
           ))}
         </ul>
       </div>
-      <div className='AddMember'>      
-        <button>Add member</button>
+      <div className='SideBySide'>
+        <div className='AddMember'>      
+          {user == team.owner && <button onClick={handleOpenSearch} style={{marginBottom: 10}}>Add member</button>}
+        </div>
+        <div className='AddMember'>
+          { user == team.owner && showSearch && (
+            <input
+              style={{marginRight: 10}}
+              type="text"
+              placeholder="Search..."
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              className='SearchBar'
+            />
+          )}
+          { user == team.owner && showSearch && query != "" && (
+            <div className='Column'>
+              {userList.map((username, index) => (
+                <div key={index} className='user-row'>
+                  {username}
+                  <div style={{ display: 'flex', gap: '2px'}}>
+                    <button className='Invite'>Invite</button>
+                    <button className='Invite'>View</button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
+
+
       { user == team.owner && (
       <div className='AddMember'>      
         <button style={{"marginTop":20, backgroundColor: "red"}} onClick={handleOpenConfirm}>Delete Team</button>
@@ -1088,7 +1135,7 @@ const TeamPage = () => {
           <p className='AddMember' style={{"marginTop":20}}>Are you sure? Team will be deleted for all members.</p>
           <div className='AddMember'>
             <button style={{"marginTop":10, backgroundColor:"red"}} onClick={handleDelete}>Confirm</button>
-            <button style={{"marginLeft":10, marginTop:10}}>Cancel</button>
+            <button style={{"marginLeft":10, marginTop:10}} onClick={handleOpenConfirm}>Cancel</button>
           </div>
         </div>
       )}
@@ -1110,6 +1157,7 @@ function NavigationButtons() {
       <button className="ProfileIcon" onClick={() => navigate('/profile')}>
         <img src="/default-profile.png" alt="Profile" className="ProfileIconImage" />
       </button> */}
+      <button className='Buttons' style={{marginLeft: 5}}>Search</button>
       <div className="SettingsButton" onClick={() => navigate('/settings')}> 
         <IoSettingsOutline />
       </div>
