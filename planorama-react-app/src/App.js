@@ -108,6 +108,7 @@ function TaskPage() {
   //for deletions that haven't been decided yet
   const [pendingDelete, setPendingDelete] = useState([null]);
   const [error, setError] = useState("");
+  const [dependencyError, setDependencyError] = useState("");
   const [warning, setWarning] = useState("");
   const [taskWarning, setTaskWarning] = useState("");
   const [timeLogInput, setTimeLogInput] = useState("");
@@ -227,10 +228,15 @@ function TaskPage() {
       .catch(error => {
         const msg = error.response?.data?.error || "Error deleting task.";
         const blockingTasks = error.response?.data?.blocking_tasks || [];
-        const fullMsg = blockingTasks.length > 0
-          ? `${msg} Blocking tasks: ${blockingTasks.join(", ")}`
-          : msg;
-        setError(fullMsg);
+      
+        if (blockingTasks.length > 0) {
+          const fullMsg = `${msg} Blocking tasks: ${blockingTasks.join(", ")}`;
+          setDependencyError(fullMsg);
+          setError("");
+        } else {
+          setError(msg);
+          setDependencyError("");
+        }
       });
   };
   
@@ -646,6 +652,13 @@ function TaskPage() {
       { !loggedIn &&
         <h3 style={{textAlign: "center"}}>Log in to start making tasks!</h3>
       } 
+
+      {dependencyError && (
+        <div className="TaskWarning">
+          <p>{dependencyError}</p>
+          <button onClick={() => setDependencyError("")} className="CloseWarningButton">✖</button>
+        </div>
+      )}
 
       {taskWarning && (
           <div className="TaskWarning">
