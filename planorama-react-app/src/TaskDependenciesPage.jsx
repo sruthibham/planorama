@@ -3,6 +3,7 @@ import axios from 'axios';
 import { FaTrash } from 'react-icons/fa';
 import { ReactFlowProvider, useNodesState, useEdgesState } from 'reactflow';
 import ReactFlow from 'reactflow';
+import { Controls, Background } from 'reactflow';
 import 'reactflow/dist/style.css';
 
 function TaskDependenciesPage() {
@@ -354,6 +355,7 @@ function TaskDependenciesPage() {
         }}>
           <h2 style={{ textAlign: 'center' }}>Dependency Flow Graph</h2>
           <ReactFlowProvider>
+          <div style={{ width: '100%', height: '90%' }}>
             <ReactFlow
               nodes={nodes}
               edges={edges}
@@ -361,13 +363,19 @@ function TaskDependenciesPage() {
               onEdgesChange={() => {}}
               fitView
               zoomOnScroll={false}
+              zoomOnPinch={false}
+              zoomOnDoubleClick={false}
               panOnScroll={true}
               panOnDrag={true}
               nodesDraggable={false}
               nodesConnectable={false}
               edgesUpdatable={false}
               fitViewOptions={{ padding: 0.2 }}
-            />
+            >
+            <Controls showZoom={true} showFitView={true} />
+            <Background />
+            </ReactFlow>
+            </div>
           </ReactFlowProvider>
         </div>
       </div>
