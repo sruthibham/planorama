@@ -318,6 +318,45 @@ def update_task(task_id):
             "dependencies": task.get_dependencies()
         }
     }), 200
+
+@app.route("/tasks/<int:task_id>/subtasks/<int:subtask_id>", methods=["PUT"])
+def update_subtask(task_id, subtask_id):
+    task = Task.query.get(task_id)
+    if not task:
+        return jsonify({"error": "Task not found"}), 404
+
+    data = request.json
+    completed = data.get("completed", False)
+
+    subtasks = task.get_subtasks()
+    found = False
+    for subtask in subtasks:
+        if subtask["id"] == subtask_id:
+            subtask["completed"] = completed
+            found = True
+            break
+
+    if not found:
+        return jsonify({"error": "Subtask not found"}), 404
+
+    task.set_subtasks(subtasks)
+
+    # Auto-update task status based on subtask completion
+    if all(sub["completed"] for sub in subtasks):
+        task.status = "Completed"
+    elif any(sub["completed"] for sub in subtasks):
+        task.status = "In Progress"
+    else:
+        task.status = "To-Do"
+
+    db.session.commit()
+
+    return jsonify({
+        "message": "Subtask updated",
+        "subtasks": subtasks,
+        "status": task.status
+    }), 200
+
 # Start task immediately (move to active)
 @app.route("/tasks/<int:task_id>/start_now", methods=["PUT"])
 def start_task_now(task_id):
