@@ -957,6 +957,7 @@ function TeamsPage() {
   const [ loggedIn, setLoggedIn ] = useState(false);
   const [ teamName, setTeamName ] = useState("");
   const {user} = useGlobal();
+  const [ inviteList, setInviteList ] = useState([]);
 
   // Open and close text field
   const handleOpen = () => {
@@ -971,8 +972,34 @@ function TeamsPage() {
   const handleCreate = () => {
     axios.post("http://127.0.0.1:5000/createteam", { teamName: teamName })
     .then((response) => {
-      setTeamList([...teamList, response.data]);
-    });
+      setTeamList([...teamList, response.data])
+      return axios.get("http://127.0.0.1:5000/getteams");
+    })
+    .then((response) => {
+      setTeamList(response.data);
+    })
+  }
+  // Join members list
+  const handleJoin = (teamID) => {
+    axios.post("http://127.0.0.1:5000/jointeam", { teamID: teamID })
+    .then(() => {
+      return axios.get("http://127.0.0.1:5000/getteams");
+    })
+    .then((response) => {
+      setTeamList(response.data);
+    })
+    handleDeny(teamID)
+  }
+
+  // Remove off recipients list
+  const handleDeny = (teamID) => {
+    axios.post("http://127.0.0.1:5000/denyinvite", { teamID: teamID})
+    .then(() => {
+      return axios.get("http://127.0.0.1:5000/getinvites");
+    })
+    .then((response) => {
+      setInviteList(response.data);
+    })
   }
 
   // Update team page when changing user
@@ -988,7 +1015,15 @@ function TeamsPage() {
       setTeamList(response.data);
     })
     .catch(error => console.error("Error fetching teams:", error));
-  }, [ user]);
+    
+    axios.get("http://127.0.0.1:5000/getinvites")
+    .then(response => {
+      setInviteList(response.data);
+    })
+    .catch(error => console.error("Error fetching invites:", error));
+
+  }, [ user ]);
+
 
   return (
     <div>
@@ -1018,11 +1053,23 @@ function TeamsPage() {
     
       <div className="TeamContainer">
       {teamList.map(team => (
-        <button key={team.teamID} onClick={() => navigate(`/team/${team.teamID}`)} style={{
+        <button key={team.teamID} onClick={() => navigate(`/team/${team.teamID}`) } style={{
           padding: "12px 20px",
           margin: "8px",
         }}>{team.teamName}</button>
       ))}
+      </div>
+      <div className='BotRight'>
+        <h3 className='centered'>Invites</h3>
+        {inviteList.map(team => (
+          <div key={team.teamID} className='user-row'>
+            {team.teamName} - {team.owner}
+            <div style={{ display: 'flex', gap: '2px'}}>
+              <button className='Invite' onClick={() => handleJoin(team.teamID)}>Join</button>
+              <button className='Invite' onClick={() => handleDeny(team.teamID)}>Deny</button>
+            </div>
+          </div>
+        ))}
       </div>
     </div>
   )
@@ -1069,9 +1116,28 @@ const TeamPage = () => {
     }
   }
 
-  const handleInvite = (username) => {
-    
+  // Remove off members list
+  const handleLeave = () => {
+    axios.post("http://127.0.0.1:5000/leaveteam", { teamID: team.teamID})
+    .then(() => {
+      navigate("/teams")
+    })
   }
+
+  const handleInvite = (username) => {
+    // send owner and recipient to backend
+    // store invites like members
+    // useEffect updates invites for everyone
+    axios.post("http://127.0.0.1:5000/sendinvite", {teamID: team.teamID, recipient: username})
+    .then(() => {
+      //Grey out invited user
+      return axios.get(`http://127.0.0.1:5000/getteam?teamID=${teamID}`);
+    })
+    .then((response) => {
+      setTeam(response.data); // Update state with new recipients list
+    })
+    .catch((error) => console.error("Error updating team after invite:", error));
+  };
 
   const handleView = (username) => {
     const camefrom = teamID
@@ -1130,7 +1196,9 @@ const TeamPage = () => {
                 <div key={index} className='user-row'>
                   {username}
                   <div style={{ display: 'flex', gap: '2px'}}>
-                    <button className='Invite' onClick={() => handleInvite(username)}>Invite</button>
+                    {!team.recipients.includes(username) ? (
+                      <button className='Invite' onClick={() => handleInvite(username)}>Invite</button>
+                    ) : null}
                     <button className='Invite' onClick={() => handleView(username)}>View</button>
                   </div>
                 </div>
@@ -1142,6 +1210,11 @@ const TeamPage = () => {
 
       <h2 className='AddMember' style={{marginTop:10}}>Tasks</h2>
 
+      { user !== team.owner && (
+        <div className='AddMember'>      
+          <button style={{"marginTop":20, backgroundColor: "red"}} onClick={handleLeave}>Leave Team</button>
+        </div>
+      )}
       { user === team.owner && (
         <div className='AddMember'>      
           <button style={{"marginTop":20, backgroundColor: "red"}} onClick={handleOpenConfirm}>Delete Team</button>

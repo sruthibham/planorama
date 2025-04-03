@@ -364,7 +364,14 @@ with app.app_context():
     if not UserLogin.query.filter_by(username="admin").first():
         admin = UserLogin(username="admin", email="email", pwd="pass")
         db.session.add(admin)
+        admin = UserLogin(username="admin1", email="email", pwd="pass")
+        db.session.add(admin)
+        admin = UserLogin(username="admin2", email="email", pwd="pass")
+        db.session.add(admin)
+        admin = UserLogin(username="admin3", email="email", pwd="pass")
+        db.session.add(admin)
         db.session.commit()
+
 
 
 '''
@@ -653,6 +660,7 @@ class Teams(db.Model):
     teamName = db.Column(db.String(64), nullable=False)
     owner = db.Column(db.String(64), nullable=False)
     members = db.Column(db.Text, nullable=True)
+    recipients = db.Column(db.Text, nullable=True)
 
     def get_members(self):
         return json.loads(self.members) if self.members else []
@@ -662,6 +670,30 @@ class Teams(db.Model):
         if username not in members:
             members.append(username)
             self.members = json.dumps(members)
+            db.session.commit()
+
+    def remove_member(self, username):
+        members = self.get_members()
+        if username in members:
+            members.remove(username)
+            self.members = json.dumps(members) if members else None  
+            db.session.commit()
+
+    def get_recipients(self):
+        return json.loads(self.recipients) if self.recipients else []
+
+    def add_recipient(self, username):
+        recipients = self.get_recipients()
+        if username not in recipients:
+            recipients.append(username)
+            self.recipients = json.dumps(recipients)
+            db.session.commit()
+
+    def remove_recipient(self, username):
+        recipients = self.get_recipients()
+        if username in recipients:
+            recipients.remove(username)
+            self.recipients = json.dumps(recipients) if recipients else None
             db.session.commit()
 
 with app.app_context():
@@ -674,7 +706,8 @@ def createTeam():
     new_team = Teams(
         teamName=data.get("teamName"), 
         owner=currentUser, 
-        members=json.dumps([currentUser])
+        members=json.dumps([currentUser]),
+        recipients=json.dumps([])
     )
     
     db.session.add(new_team)
@@ -692,8 +725,24 @@ def getTeams():
         "teamID": team.teamID,
         "teamName": team.teamName,
         "owner": team.owner,
-        "members": team.get_members()
+        "members": team.get_members(),
+        "recipients": team.get_recipients()
     } for team in user_teams])
+
+# Get all teams that user has an invite to
+@app.route("/getinvites", methods=["GET"])
+def getInvites():
+    global currentUser
+    teams = Teams.query.all()
+    user_invites = [team for team in teams if currentUser in team.get_recipients()]
+
+    return jsonify([{
+        "teamID": team.teamID,
+        "teamName": team.teamName,
+        "owner": team.owner,
+        "members": team.get_members(),
+        "recipients": team.get_recipients()
+    } for team in user_invites])
 
 # Get the information of a team based on ID
 @app.route("/getteam", methods=["GET"])
@@ -705,7 +754,8 @@ def getTeamFromID():
         "teamID": team.teamID,
         "teamName": team.teamName,
         "owner": team.owner,
-        "members": team.get_members()
+        "members": team.get_members(),
+        "recipients": team.get_recipients()
     })
 
 # Get profile information based on username
@@ -737,10 +787,59 @@ def searchUsers():
     query = data.get("query")
     if (query==''):
         return jsonify([])
-    users = UserLogin.query.filter(UserLogin.username.ilike(f"%{query}%")).all()
+    users = UserLogin.query.filter(UserLogin.username.ilike(f"%{query}%"), UserLogin.username != currentUser).all()
     users = users[:15]
     usernames = [user.username for user in users]
     return jsonify(usernames)
+
+# Adds user to recipients
+@app.route("/sendinvite", methods=["POST"])
+def sendInv():
+    data = request.json
+    team_id = data.get("teamID")
+    username = data.get("recipient")
+
+    team = Teams.query.get(team_id)
+
+    recipients = team.get_recipients()
+
+    if username in recipients:
+        return jsonify({"message": f"{username} is already invited."})
+
+    team.add_recipient(username)
+    print("Invites to: ",team.get_recipients())
+
+    return jsonify({"message": f"{username} invited to team {team.teamName}."})
+
+
+# Adds user to members
+@app.route("/jointeam", methods=["POST"])
+def joinTeam():
+    data = request.json
+    team_id = data.get("teamID")
+    team = Teams.query.get(team_id)
+    team.add_member(currentUser)
+    return jsonify(data)
+
+
+# Remove user from recipients
+@app.route("/denyinvite", methods=["POST"])
+def denyInv():
+    data = request.json
+    team_id = data.get("teamID")
+    team = Teams.query.get(team_id)
+    team.remove_recipient(currentUser)
+    return jsonify(data)
+
+# Remove user from members
+@app.route("/leaveteam", methods=["POST"])
+def leaveTeam():
+    data = request.json
+    team_id = data.get("teamID")
+    team = Teams.query.get(team_id)
+    team.remove_member(currentUser)
+    return jsonify(data)
+
 
 if __name__ == "__main__":
     app.run(debug=True)

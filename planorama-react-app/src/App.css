@@ -642,6 +642,18 @@ button:hover {
   gap: 0px; 
 }
 
+.BotRight {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;     
+  width: 300px;
+  height: 300px;   
+  background-color: #f0f0f0; 
+  border: 1px solid #ccc;  
+  border-radius: 8px;
+  padding: 10px;
+}
+
 .Invite {
   width: 50px;
   height: 24px;
