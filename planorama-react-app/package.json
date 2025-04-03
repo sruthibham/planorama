@@ -17,6 +17,7 @@
   },
   "scripts": {
     "start": "react-scripts start",
+    "db": "python ./src/backend/task_app/everything.py",
     "build": "react-scripts build",
     "test": "react-scripts test",
     "eject": "react-scripts eject"
