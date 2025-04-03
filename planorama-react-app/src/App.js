@@ -666,6 +666,14 @@ function TaskPage() {
             onMouseDown={() => {
               setError("");
               setWarning("");
+              if (editingTask) {
+                const cleanedSubtasks = editingTask.subtasks.map(sub => ({
+                  ...sub,
+                  isEditing: false,
+                  editName: undefined,
+                }));
+                setEditingTask(prev => ({ ...prev, subtasks: cleanedSubtasks }));
+              }
               setEditingTask(null);
               setNewTask({
                 username: user,
@@ -786,15 +794,15 @@ function TaskPage() {
                   ) : (
                     <input
                       type="text"
-                      value={subtask.name}
+                      value={subtask.editName}
                       onChange={(e) => {
                         if (editingTask) {
                           const updatedSubtasks = [...editingTask.subtasks];
-                          updatedSubtasks[index].name = e.target.value;
+                          updatedSubtasks[index].editName = e.target.value;
                           setEditingTask({ ...editingTask, subtasks: updatedSubtasks });
                         } else {
                           const updatedSubtasks = [...newTask.subtasks];
-                          updatedSubtasks[index].name = e.target.value;
+                          updatedSubtasks[index].editName = e.target.value;
                           setNewTask({ ...newTask, subtasks: updatedSubtasks });
                         }
                       }}
@@ -809,12 +817,20 @@ function TaskPage() {
                       onClick={() => {
                         if (editingTask) {
                           const updatedSubtasks = [...editingTask.subtasks];
-                          updatedSubtasks[index].isEditing = true;
-                          setEditingTask({ ...editingTask, subtasks: updatedSubtasks });
+                          updatedSubtasks[index] = {
+                            ...updatedSubtasks[index],
+                            isEditing: true,
+                            editName: updatedSubtasks[index].name
+                          };
+                          setEditingTask(prev => ({ ...prev, subtasks: updatedSubtasks }));
                         } else {
                           const updatedSubtasks = [...newTask.subtasks];
-                          updatedSubtasks[index].isEditing = true;
-                          setNewTask({ ...newTask, subtasks: updatedSubtasks });
+                          updatedSubtasks[index] = {
+                            ...updatedSubtasks[index],
+                            isEditing: true,
+                            editName: updatedSubtasks[index].name
+                          };
+                          setNewTask(prev => ({ ...prev, subtasks: updatedSubtasks }));
                         }
                       }}
                     >
@@ -827,11 +843,15 @@ function TaskPage() {
                         onClick={() => {
                           if (editingTask) {
                             const updatedSubtasks = [...editingTask.subtasks];
+                            updatedSubtasks[index].name = updatedSubtasks[index].editName;
                             updatedSubtasks[index].isEditing = false;
+                            delete updatedSubtasks[index].editName;
                             setEditingTask({ ...editingTask, subtasks: updatedSubtasks });
                           } else {
                             const updatedSubtasks = [...newTask.subtasks];
+                            updatedSubtasks[index].name = updatedSubtasks[index].editName;
                             updatedSubtasks[index].isEditing = false;
+                            delete updatedSubtasks[index].editName;
                             setNewTask({ ...newTask, subtasks: updatedSubtasks });
                           }
                         }}
@@ -843,6 +863,7 @@ function TaskPage() {
                         onClick={() => {
                           const updatedSubtasks = [...(editingTask?.subtasks || newTask?.subtasks)];
                           updatedSubtasks[index].isEditing = false;
+                          delete updatedSubtasks[index].editName;
 
                           if (editingTask) {
                             setEditingTask({ ...editingTask, subtasks: updatedSubtasks });
