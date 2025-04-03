@@ -303,7 +303,7 @@ function TaskDependenciesPage() {
                     })
                     .map(t => (
                         <option key={t.id} value={t.id}>
-                        {t.name} - [{new Date(t.due_time).toLocaleDateString('en-US')}]
+                        {t.name} - [{new Date(t.due_time).toLocaleDateString('en-US', { timeZone: 'UTC' })}]
                         </option>
                     ))}
 
