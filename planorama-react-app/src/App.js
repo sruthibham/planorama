@@ -1,6 +1,7 @@
 import './App.css';
 import ProfilePage from './ProfilePage';
 import SettingsPage from './SettingsPage';
+import TaskDependenciesPage from './TaskDependenciesPage';
 import { BrowserRouter as Router, Routes, Route, useNavigate, useParams } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import { GlobalProvider, useGlobal } from "./GlobalContext";
@@ -10,6 +11,15 @@ import { useRef } from 'react';
 import axios from 'axios';
 import React from 'react';
 
+
+const resizeObserverErrorHandler = (e) => {
+  if (e.message.includes("ResizeObserver loop completed with undelivered notifications")) {
+    e.stopImmediatePropagation();
+  }
+};
+
+window.addEventListener("error", resizeObserverErrorHandler);
+window.addEventListener("unhandledrejection", resizeObserverErrorHandler);
 
 function DisplayUsername() {
   const { user } = useGlobal();
@@ -214,7 +224,14 @@ function TaskPage() {
         setWarning("");
         setError("");
       })
-      .catch(error => console.error("Error deleting task:", error));
+      .catch(error => {
+        const msg = error.response?.data?.error || "Error deleting task.";
+        const blockingTasks = error.response?.data?.blocking_tasks || [];
+        const fullMsg = blockingTasks.length > 0
+          ? `${msg} Blocking tasks: ${blockingTasks.join(", ")}`
+          : msg;
+        setError(fullMsg);
+      });
   };
   
   //Resets pending back to null and resores edit/delete buttons
@@ -460,6 +477,7 @@ function TaskPage() {
           </div>
           <div className="TaskCell">Time Spent</div>
           <div className="TaskCell">Deadline</div>
+          <div className="TaskCell">Dependencies</div>
           <div className="TaskCell">Make Changes</div>
         </div>
 
@@ -562,6 +580,19 @@ function TaskPage() {
                           <div className="TaskCell">{task.status}</div>
                           <TaskTimeCell task={task} onLogClick={handleEditClick} />
                           <div className="TaskCell">{formatDate(task.due_time)}</div>
+                          <div className="TaskCell">
+                            {(task.dependencies || []).map((depId, idx) => {
+                              const dep = tasks.find(t => t.id === depId);
+                              if (!dep) return null;
+                              return (
+                                <div key={idx}>
+                                  <span className={dep.status === 'Completed' ? 'SubtaskCompleted' : ''}>
+                                    {dep.name} - [{dep.due_time}]
+                                  </span>
+                                </div>
+                              );
+                            })}
+                          </div>
                           <div className="TaskCell">{deleteButtons(task.id)}</div>
                         </div>
                       )}
@@ -615,6 +646,13 @@ function TaskPage() {
       { !loggedIn &&
         <h3 style={{textAlign: "center"}}>Log in to start making tasks!</h3>
       } 
+      
+      {error && (
+        <div className="TaskWarning">
+          <p>{error}</p>
+          <button onClick={() => setError("")} className="CloseWarningButton">✖</button>
+        </div>
+      )}
 
       {taskWarning && (
           <div className="TaskWarning">
@@ -1190,6 +1228,7 @@ function NavigationButtons() {
   return (
     <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', flexDirection: 'row', height: '3vh', padding: '10px' }}>
       <button className="Buttons" onClick={() => navigate('/')}>Planorama</button>
+      <button className="Buttons" onClick={() => navigate('/dependencies')}>Dependencies</button>
       <button className="Buttons" style={{marginLeft: 5}}onClick={() => navigate('/teams')}>Teams</button>
       {/* Commented out these buttons because they were moved to a different menu (top right)
       You can uncomment them for testing if you want*/}
@@ -1220,6 +1259,7 @@ function App() {
             <Route path="/settings" element={<SettingsPage />} />
             <Route path="/teams" element={<TeamsPage />} />
             <Route path="/team/:teamID" element={<TeamPage />} />
+            <Route path="/dependencies" element={<TaskDependenciesPage />} />
           </Routes>
         </GlobalProvider>
     </Router>
