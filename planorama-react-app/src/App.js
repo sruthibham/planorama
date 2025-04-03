@@ -646,13 +646,6 @@ function TaskPage() {
       { !loggedIn &&
         <h3 style={{textAlign: "center"}}>Log in to start making tasks!</h3>
       } 
-      
-      {error && (
-        <div className="TaskWarning">
-          <p>{error}</p>
-          <button onClick={() => setError("")} className="CloseWarningButton">✖</button>
-        </div>
-      )}
 
       {taskWarning && (
           <div className="TaskWarning">
