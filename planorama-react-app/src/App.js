@@ -587,7 +587,7 @@ function TaskPage() {
                               return (
                                 <div key={idx}>
                                   <span className={dep.status === 'Completed' ? 'SubtaskCompleted' : ''}>
-                                    {dep.name} - [{dep.due_time}]
+                                    {dep.name} - {formatDate(dep.due_time)}
                                   </span>
                                 </div>
                               );
