@@ -1,13 +1,25 @@
 import './App.css';
 import ProfilePage from './ProfilePage';
 import SettingsPage from './SettingsPage';
+import TaskDependenciesPage from './TaskDependenciesPage';
 import { BrowserRouter as Router, Routes, Route, useNavigate, useParams } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import { GlobalProvider, useGlobal } from "./GlobalContext";
 import { IoSettingsOutline } from "react-icons/io5";
+import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 import { useRef } from 'react';
 import axios from 'axios';
+import React from 'react';
 
+
+const resizeObserverErrorHandler = (e) => {
+  if (e.message.includes("ResizeObserver loop completed with undelivered notifications")) {
+    e.stopImmediatePropagation();
+  }
+};
+
+window.addEventListener("error", resizeObserverErrorHandler);
+window.addEventListener("unhandledrejection", resizeObserverErrorHandler);
 
 function DisplayUsername() {
   const { user } = useGlobal();
@@ -103,6 +115,8 @@ function TaskPage() {
   const [selectedTaskLogs, setSelectedTaskLogs] = useState([]);
   const [totalTimeSpent, setTotalTimeSpent] = useState(0);
   const [isAddingSubtask, setIsAddingSubtask] = useState(false);
+  const [draggingOverIndex, setDraggingOverIndex] = useState(null);
+  const [draggingTaskId, setDraggingTaskId] = useState(null);
   const COLORS = [
     { name: "red", value: "#fbb9c5" },
     { name: "orange", value: "#fdd0b1" },
@@ -210,7 +224,14 @@ function TaskPage() {
         setWarning("");
         setError("");
       })
-      .catch(error => console.error("Error deleting task:", error));
+      .catch(error => {
+        const msg = error.response?.data?.error || "Error deleting task.";
+        const blockingTasks = error.response?.data?.blocking_tasks || [];
+        const fullMsg = blockingTasks.length > 0
+          ? `${msg} Blocking tasks: ${blockingTasks.join(", ")}`
+          : msg;
+        setError(fullMsg);
+      });
   };
   
   //Resets pending back to null and resores edit/delete buttons
@@ -456,48 +477,146 @@ function TaskPage() {
           </div>
           <div className="TaskCell">Time Spent</div>
           <div className="TaskCell">Deadline</div>
+          <div className="TaskCell">Dependencies</div>
           <div className="TaskCell">Make Changes</div>
         </div>
 
         {tasks.length === 0 ? (
-          // show 'No tasks avaible.' if tasks table empty
           <div>No tasks available.</div>
-        ) : (
-        filteredTasks.length === 0 ? (
-          // show 'No tasks match.' if 0 tasks meet filter condition(s)
+        ) : filteredTasks.length === 0 ? (
           <div>No tasks match.</div>
         ) : (
-          filteredTasks.map(task => (
-          <div key={task.id} className="TaskRow" style={{ backgroundColor: task.color_tag || '#faf7f0' }}>
-            <div className="Task">{}</div>
-            <div className="Task">{}</div>
-            <div className="TaskCell">{task.name}</div>
-            <td className="TaskCell" style={{ textAlign: "left"}}>
-              {task.subtasks && task.subtasks.length > 0 ? (
-                <div>
-                  {task.subtasks.map(subtask => (
-                    <div>
-                      <input
-                        type="checkbox"
-                        checked={subtask.completed}
-                        onChange={() => handleToggleSubtask(task.id, subtask.id, !subtask.completed)}
-                      />
-                      <span className={subtask.completed ? "SubtaskCompleted" : ""}>{subtask.name}</span>
-                    </div>
-                  ))}
+          <DragDropContext
+          onDragEnd={(result) => {
+            const { destination, source } = result;
+          
+            // Always clear highlight bar
+            setDraggingOverIndex(null);
+            setDraggingTaskId(null);
+          
+            if (!destination || destination.index === source.index) return;
+          
+            const reordered = Array.from(filteredTasks);
+            const [movedTask] = reordered.splice(source.index, 1);
+            reordered.splice(destination.index, 0, movedTask);
+          
+            setTasks(reordered);
+            axios.post("http://127.0.0.1:5000/tasks/reorder", reordered.map(task => task.id))
+              .catch((err) => console.error("Failed to reorder:", err));
+          }}
+            onDragUpdate={(update) => {
+              if (!update.destination) {
+                setDraggingOverIndex(null);
+                return;
+              }
+            
+              const sourceIndex = update.source.index;
+              const destIndex = update.destination.index;
+            
+              let adjustedIndex = destIndex;
+              
+              if (destIndex > sourceIndex) {
+                adjustedIndex = destIndex + 1;
+              }
+            
+              setDraggingOverIndex(adjustedIndex);
+            }}
+          >
+            <Droppable droppableId="task-list">
+            {(provided) => (
+              <div ref={provided.innerRef} {...provided.droppableProps}>
+                {filteredTasks.map((task, index) => {
+                  const shouldShowBar = draggingOverIndex === index;
+                  return (
+                    <React.Fragment key={task.id}>
+                      {shouldShowBar && (
+                        <div
+                          style={{
+                            height: "8px",
+                            backgroundColor: "#d0d0d0",
+                            margin: "4px 0",
+                            borderRadius: "4px",
+                            transition: "background-color 0.2s ease",
+                          }}
+                        />
+                      )}
+                    <Draggable draggableId={String(task.id)} index={index} key={task.id}>
+                      {(provided, snapshot) => (
+                        <div
+                          className="TaskRow"
+                          ref={provided.innerRef}
+                          {...provided.draggableProps}
+                          {...provided.dragHandleProps}
+                          style={{
+                            backgroundColor: snapshot.isDragging
+                              ? "#e0e0e0"
+                              : task.color_tag || "#faf7f0",
+                            ...provided.draggableProps.style,
+                            boxShadow: snapshot.isDragging
+                              ? "0 0 10px rgba(0,0,0,0.3)"
+                              : "none",
+                          }}
+                        >
+                          <div className="Task"></div>
+                          <div className="Task"></div>
+                          <div className="TaskCell">{task.name}</div>
+                          <td className="TaskCell" style={{ textAlign: "left" }}>
+                            {task.subtasks && task.subtasks.length > 0 ? (
+                              <div>
+                                {task.subtasks.map(subtask => (
+                                  <div key={subtask.id}>
+                                    <input
+                                      type="checkbox"
+                                      checked={subtask.completed}
+                                      onChange={() => handleToggleSubtask(task.id, subtask.id, !subtask.completed)}
+                                    />
+                                    <span className={subtask.completed ? "SubtaskCompleted" : ""}>{subtask.name}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            ) : null}
+                          </td>
+                          <div className="TaskCell">{task.priority}</div>
+                          <div className="TaskCell">{task.status}</div>
+                          <TaskTimeCell task={task} onLogClick={handleEditClick} />
+                          <div className="TaskCell">{formatDate(task.due_time)}</div>
+                          <div className="TaskCell">
+                            {(task.dependencies || []).map((depId, idx) => {
+                              const dep = tasks.find(t => t.id === depId);
+                              if (!dep) return null;
+                              return (
+                                <div key={idx}>
+                                  <span className={dep.status === 'Completed' ? 'SubtaskCompleted' : ''}>
+                                    {dep.name} - [{dep.due_time}]
+                                  </span>
+                                </div>
+                              );
+                            })}
+                          </div>
+                          <div className="TaskCell">{deleteButtons(task.id)}</div>
+                        </div>
+                      )}
+                    </Draggable>
+                  </React.Fragment>
+                  );
+                })}
+                  {draggingOverIndex === filteredTasks.length && (
+                    <div
+                      style={{
+                        height: "8px",
+                        backgroundColor: "#d3d3d3",
+                        borderRadius: "4px",
+                        margin: "4px 0",
+                        transition: "all 0.2s ease-in-out",
+                      }}
+                    />
+                  )}
+                  {provided.placeholder}
                 </div>
-              ) : null}
-            </td>
-            <div className="TaskCell">{task.priority}</div>
-            <div className="TaskCell">{task.status}</div>
-            <TaskTimeCell task={task} onLogClick={handleEditClick} />
-            <div className="TaskCell">{formatDate(task.due_time)}</div>
-            <div className="TaskCell">
-              {deleteButtons(task.id)}
-            </div>
-          </div>
-        ))
-      ))}
+              )}
+            </Droppable>
+          </DragDropContext>
+        )}
       {scheduledTasks.length > 0 && (
         <div style={{ marginTop: "40px", opacity: 0.8 }}>
           <h3 style={{ fontSize: "16px", fontWeight: "bold" }}>Scheduled Tasks</h3>
@@ -527,6 +646,13 @@ function TaskPage() {
       { !loggedIn &&
         <h3 style={{textAlign: "center"}}>Log in to start making tasks!</h3>
       } 
+      
+      {error && (
+        <div className="TaskWarning">
+          <p>{error}</p>
+          <button onClick={() => setError("")} className="CloseWarningButton">✖</button>
+        </div>
+      )}
 
       {taskWarning && (
           <div className="TaskWarning">
@@ -1326,6 +1452,7 @@ function NavigationButtons() {
   return (
     <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', flexDirection: 'row', height: '3vh', padding: '10px' }}>
       <button className="Buttons" onClick={() => navigate('/')}>Planorama</button>
+      <button className="Buttons" onClick={() => navigate('/dependencies')}>Dependencies</button>
       <button className="Buttons" style={{marginLeft: 5}}onClick={() => navigate('/teams')}>Teams</button>
       {/* Commented out these buttons because they were moved to a different menu (top right)
       You can uncomment them for testing if you want*/}
@@ -1359,6 +1486,7 @@ function App() {
             <Route path="/teams" element={<TeamsPage />} />
             <Route path="/team/:teamID" element={<TeamPage />} />
             <Route path="/gensearch" element={<SearchPage />} />
+            <Route path="/dependencies" element={<TaskDependenciesPage />} />
           </Routes>
         </GlobalProvider>
     </Router>

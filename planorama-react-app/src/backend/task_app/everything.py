@@ -12,7 +12,6 @@ import time
 
 app = Flask(__name__)
 CORS(app)
-
 # Update current user whenever refreshed
 path = os.path.join(os.path.dirname(os.path.abspath(__file__)),"currentUser.txt")
 word = open(path).read()
@@ -47,6 +46,17 @@ class Task(db.Model):
     subtasks = db.Column(db.Text, default="[]", nullable=True)
     start_date = db.Column(db.String(50), nullable=True)  # New Field
     time_logs = db.Column(db.Text, default="[]", nullable=True)
+    order_index = db.Column(db.Integer, nullable=False, default=0)
+    dependencies = db.Column(db.Text, default="[]")
+
+    def get_dependencies(self):
+        try:
+            return json.loads(self.dependencies) if self.dependencies else []
+        except json.JSONDecodeError:
+            return []
+
+    def set_dependencies(self, deps_list):
+        self.dependencies = json.dumps(deps_list)
 
     def get_subtasks(self):
         try:
@@ -77,7 +87,8 @@ with app.app_context():
 def get_tasks():
     global currentUser
     tasks = Task.query.filter(Task.user == currentUser, 
-                              (Task.start_date == None) | (Task.start_date <= datetime.today().strftime("%Y-%m-%d"))).all()
+                              (Task.start_date == None) | (Task.start_date <= datetime.today().strftime("%Y-%m-%d")))\
+                        .order_by(Task.order_index).all()
     usersTasks = []
     # for task in tasks:
     #     if (task.user == currentUser):
@@ -93,7 +104,9 @@ def get_tasks():
         "status": task.status,
         "start_date": task.start_date,
         "time_logs": task.get_time_logs(),
-        "subtasks": task.get_subtasks()
+        "subtasks": task.get_subtasks(),
+        "order_index": task.order_index,
+        "dependencies": task.get_dependencies()
     } for task in tasks])
 
 # Retrieve SCHEDULED tasks
@@ -112,7 +125,9 @@ def get_scheduled_tasks():
         "status": task.status,
         "start_date": task.start_date,
         "time_logs": task.get_time_logs(),
-        "subtasks": task.get_subtasks()
+        "subtasks": task.get_subtasks(),
+        "order_index": task.order_index,
+        "dependencies": task.get_dependencies()
     } for task in tasks])
 
 @app.route("/tasks", methods=["POST"])
@@ -151,6 +166,12 @@ def add_task():
 
     subtasks = data.get("subtasks", [])
 
+    max_index = db.session.query(db.func.max(Task.order_index)).filter_by(user=data["username"]).scalar()
+    if max_index is None:
+        max_index = 0
+    else:
+        max_index += 1
+
     new_task = Task(
         user=data["username"],
         name=data["name"],
@@ -159,9 +180,14 @@ def add_task():
         priority=data["priority"],
         color_tag=data.get("color_tag"),
         status=data.get("status", "To-Do"),
-        start_date=start_date
+        start_date=start_date,
+        order_index=max_index
     )
     new_task.set_subtasks(subtasks)
+
+    dependencies = data.get("dependencies", [])
+    new_task.set_dependencies(dependencies)
+
 
     db.session.add(new_task)
     db.session.commit()
@@ -176,8 +202,23 @@ def add_task():
         "status": new_task.status,
         "start_date": new_task.start_date,
         "time_logs": new_task.get_time_logs(), 
-        "subtasks": new_task.get_subtasks()
+        "subtasks": new_task.get_subtasks(),
+        "order_index": new_task.order_index,
+        "dependencies": new_task.get_dependencies()
     }}), 201
+
+@app.route("/tasks/reorder", methods=["POST"])
+def reorder_tasks():
+    data = request.json  # Expects list of task IDs in new order
+    if not isinstance(data, list):
+        return jsonify({"error": "Invalid data format"}), 400
+
+    for index, task_id in enumerate(data):
+        task = Task.query.get(task_id)
+        if task and task.user == currentUser:
+            task.order_index = index
+    db.session.commit()
+    return jsonify({"message": "Task order updated"}), 200
 
 # Move scheduled tasks to active at midnight
 def auto_move_tasks():
@@ -188,7 +229,7 @@ def auto_move_tasks():
             for task in tasks:
                 task.start_date = None  # Move to active
             db.session.commit()
-        time.sleep(86400)  # Run every 24 hours
+        time.sleep(86400) # Run every 24 hours
 # Start the background thread
 threading.Thread(target=auto_move_tasks, daemon=True).start()
 
@@ -197,7 +238,13 @@ def delete_task(task_id):
     task = Task.query.get(task_id)
     if not task:
         return jsonify({"error": "Task not found"}), 404
-
+    dependencies = Task.query.filter(Task.dependencies.contains(task_id)).all()
+    if dependencies:
+        return jsonify({
+            "error": f"Task cannot be deleted because it is a dependency for other tasks.",
+            "blocking_tasks": [t.name for t in dependencies]
+        }), 400
+    
     db.session.delete(task)  # Remove task from database
     db.session.commit()  # Save changes
     return jsonify({"message": "Task deleted successfully"}), 200
@@ -205,11 +252,15 @@ def delete_task(task_id):
 @app.route("/tasks/<int:task_id>", methods=["PUT"])
 def update_task(task_id):
     data = request.json
+    task = Task.query.get(task_id)
+
+    if not task:
+        return jsonify({"error": "Task not found."}), 404
+
     username = data.get("username")
-
-    # task belongs to the user making the request
-    task = Task.query.filter_by(id=task_id, user=username).first()
-
+    if task.user != username:
+        return jsonify({"error": "You don't have permission to edit this task"}), 403
+    
     if not data.get("name"):
         return jsonify({"error": "Task name is required."}), 400
     if not data.get("due_time"):
@@ -237,9 +288,16 @@ def update_task(task_id):
     if "time_logs" in data:
         task.set_time_logs(data["time_logs"])
     task.start_date = start_date
-
     if "subtasks" in data:
         task.set_subtasks(data["subtasks"])
+    if "dependencies" in data:
+        task.set_dependencies(data["dependencies"])
+    
+    if data.get("status") == "Completed":
+        for dep_id in task.get_dependencies():
+            dep_task = Task.query.get(dep_id)
+            if dep_task and dep_task.status != "Completed":
+                return jsonify({"error": "Cannot mark task as completed. Complete all dependencies first."}), 400
 
     db.session.commit()
 
@@ -256,7 +314,8 @@ def update_task(task_id):
             "status": task.status,
             "start_date": task.start_date,
             "time_logs": task.get_time_logs(), 
-            "subtasks": task.get_subtasks()
+            "subtasks": task.get_subtasks(),
+            "dependencies": task.get_dependencies()
         }
     }), 200
 # Start task immediately (move to active)
@@ -843,4 +902,5 @@ def leaveTeam():
 
 if __name__ == "__main__":
     app.run(debug=True)
+
 
