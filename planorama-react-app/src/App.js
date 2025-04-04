@@ -124,7 +124,9 @@ function TaskPage() {
   const [showArchiveModal, setShowArchiveModal] = useState(false);
   const [autoArchiveEnabled, setAutoArchiveEnabled] = useState(false);
   const [archivePeriod, setArchivePeriod] = useState("weekly");
-  const [archiveTime, setArchiveTime] = useState("12:00")
+  const [archiveTime, setArchiveTime] = useState("12:00");
+  const [showTemplateModal, setShowTemplateModal] = useState(false);
+  const [taskTemplates, setTaskTemplates] = useState([]);
   const [scheduledTasks, setScheduledTasks] = useState([]);
   const [showModal, setShowModal] = useState(false);
   const [newSubtaskName, setNewSubtaskName] = useState("");
@@ -343,6 +345,18 @@ function TaskPage() {
 
       setArchivedTasks(updatedTasks);
     }
+  }
+
+  const createTaskFromTemplate = () => {
+
+  }
+
+  const editTemplate = () => {
+
+  }
+
+  const deleteTemplate = () => {
+
   }
 
   //for the colors before they were marked completed
@@ -833,6 +847,34 @@ function TaskPage() {
                 ))
               ) : (
                 <p>No archived tasks.</p>
+              )}
+            </div>
+          </div>
+        )}
+
+        <button className="TemplateButton" onClick={() => setShowTemplateModal(true)}>Templates</button>
+        {showTemplateModal && (
+          <div className="Modal">
+            <div className="TemplateModalContent">
+              <button onClick={() => setShowTemplateModal(false)} className="CloseArchiveButton">Close</button>
+              <h3>Task Templates</h3>
+
+              {taskTemplates.length > 0 ? (
+                taskTemplates.map((template) => (
+                  <div key={template.id} className="TemplateCard">
+                    <div className="TemplateInfo">
+                      <strong>{template.name}</strong>
+                      <p>{template.description}</p>
+                    </div>
+                    <div className="TemplateActions">
+                      <button onClick={() => createTaskFromTemplate(template)}>New</button>
+                      <button onClick={() => editTemplate(template)}>Edit</button>
+                      <button onClick={() => deleteTemplate(template)}>Delete</button>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <p>No templates.</p>
               )}
             </div>
           </div>

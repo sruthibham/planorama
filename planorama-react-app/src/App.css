@@ -236,6 +236,20 @@ body {
   align-items: center;
 }
 
+.TemplateButton {
+  padding: 5px 5px;
+  border: none;
+  background-color: #efa143;
+  color: white;
+  cursor: pointer;
+  border-radius: 5px;
+  margin: 5px;
+}
+
+.TemplateButton:hover {
+  background-color: #e68d22;
+}
+
 .MakeTaskButton {
   display: block;
   margin: 20px auto;
