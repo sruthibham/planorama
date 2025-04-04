@@ -122,6 +122,9 @@ function TaskPage() {
   const [archivedTasks, setArchivedTasks] = useState([]); //for the archived tasks
   const [showArchived, setShowArchived] = useState(false);
   const [showArchiveModal, setShowArchiveModal] = useState(false);
+  const [autoArchiveEnabled, setAutoArchiveEnabled] = useState(false);
+  const [archivePeriod, setArchivePeriod] = useState("weekly");
+  const [archiveTime, setArchiveTime] = useState("12:00")
   const [scheduledTasks, setScheduledTasks] = useState([]);
   const [showModal, setShowModal] = useState(false);
   const [newSubtaskName, setNewSubtaskName] = useState("");
@@ -792,6 +795,31 @@ function TaskPage() {
             <div className="ArchiveModal">
               <button onClick={closeArchiveModal} className="CloseArchiveButton">Close</button>
               <h3>Archived Tasks</h3>
+              <div className="AutoArchiveSettings">
+                <label>
+                  <input
+                    type="checkbox"
+                    checked={autoArchiveEnabled}
+                    onChange={() => setAutoArchiveEnabled(!autoArchiveEnabled)}
+                  />
+                  Enable Auto-Archival
+                </label>
+
+                <select
+                  value={archivePeriod}
+                  onChange={(e) => setArchivePeriod(e.target.value)}
+                >
+                  <option value="daily">Daily</option>
+                  <option value="weekly">Weekly</option>
+                  <option value="monthly">Monthly</option>
+                </select>
+
+                <input
+                  type="time"
+                  value={archiveTime}
+                  onChange={(e) => setArchiveTime(e.target.value)}
+                />
+              </div>
               {archivedTasks.length > 0 ? (
                 archivedTasks.map((task) => (
                   <div key={task.id} className="ArchivedTask">

@@ -223,6 +223,19 @@ body {
   background-color: #232322;
 }
 
+.AutoArchiveSettings {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  align-items: center;
+  margin-bottom: 15px;
+}
+.AutoArchiveSettings label {
+  display: flex;
+  gap: 5px;
+  align-items: center;
+}
+
 .MakeTaskButton {
   display: block;
   margin: 20px auto;
