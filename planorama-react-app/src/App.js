@@ -1523,14 +1523,110 @@ function TemplatesPage() {
     });
   }
 
+  //formerly handleSubmit
   const createTaskTemplate = () => {
 
-  }
+    const newTemplate = {
+      id: Date.now(),
+      name: newTemplate.name,
+      description: newTemplate.description,
+      due_time: newTemplate.dueTime,
+      priority: newTemplate.priority,
+      color_tag: newTemplate.colorTag,
+      status: newTemplate.status,
+      start_date: newTemplate.startDate,
+      time_log: newTemplate.timeLog,
+      subtasks: newTemplate.subtasks,
+    };
+
+    setTemplate([...templates, newTemplate]);
+
+    /*
+    //setError("");
+    //setWarning("");
+
+    if (!newTemplate.name || !newTemplate.due_time) {
+      //setError("Template name or due date required")
+      return;
+    }
+    axios.post("http://127.0.0.1:5000/tasks", {
+      //username: user,
+      name: newTemplate.name,
+      description: newTemplate.description,
+      due_time: newTemplate.due_time,
+      priority: newTemplate.priority,
+      color_tag: newTemplate.color_tag,
+      status: newTemplate.status,
+      start_date: newTemplate.start_date,
+      time_log: newTemplate.time_log, 
+      //subtasks: newTemplate.subtasks
+    })
+      .then(response => {
+        const addedTemplate = response.data.task;
+  
+        setNewTemplate({
+          //username: user,
+          name: "",
+          description: "",
+          due_time: "",
+          priority: "Medium",
+          color_tag: "",
+          status: "To-Do",
+          start_date: "",
+          time_log: "", // Reset time log
+          subtasks: []
+        });
+  
+        setShowModal(false);
+        resetModal();
+      })
+      .catch(error => {
+        if (error.response) {
+          //setError(error.response.data.error);
+        } else {
+          console.error("Error creating template:", error);
+        }
+      });
+      */
+  };
+
+  //const createTaskTemplate = () => {
+    
+  //}
 
   return (
     <div>
       <div className="Headers">
-        <h1>Templates</h1>
+        <h1 className="App">Templates</h1>
+      </div>
+
+      <h2>All Templates</h2>
+      <div className="TaskTable">
+        <div className="TaskRow TaskHeader">
+          <label></label>
+          <label>Color</label>
+          <div className="TaskCell">Task</div>
+          <div className="TaskCell">Subtasks</div>
+          <div className="TaskCell">Priority</div>
+          <div className="TaskCell">Status</div>
+          <div className="TaskCell">Time Spent</div>
+          <div className="TaskCell">Deadline</div>
+          <div className="TaskCell">Dependencies</div>
+          <div className="TaskCell">Make Changes</div>
+        </div>
+
+        <div>
+          <ul>
+            {templates.map((template) => (
+              <li key={template.id}>
+                <strong>{template.name}</strong> - {template.priority} ({template.status})
+                <p>{template.description}</p>
+                <p>Due Date: {template.due_time}</p>
+                <p>Start Date: {template.start_date}</p>
+              </li>
+            ))}
+          </ul>
+        </div>
       </div>
 
       <div>
@@ -1538,7 +1634,7 @@ function TemplatesPage() {
       </div>
 
       <div className="create-template">
-        <button onClick={openModal}>Create New Template</button>
+        <button className="MakeTaskButton" onClick={openModal}>Create New Template</button>
       </div>
 
       {showModal && (

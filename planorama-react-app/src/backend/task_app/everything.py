@@ -444,6 +444,65 @@ def time_summary():
 
 
 
+# Templates ------
+
+'''
+class Template(db.Model):
+    user = db.Column(db.String(32), nullable=False)
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(200), nullable=False)
+    description = db.Column(db.Text, nullable=True)
+    due_time = db.Column(db.String(50), nullable=False)
+    priority = db.Column(db.String(20), nullable=False)
+    color_tag = db.Column(db.String(20), nullable=True)
+    status = db.Column(db.String(20), default="To-Do")
+    subtasks = db.Column(db.Text, default="[]", nullable=True)
+    start_date = db.Column(db.String(50), nullable=True)  # New Field
+    time_logs = db.Column(db.Text, default="[]", nullable=True)
+    order_index = db.Column(db.Integer, nullable=False, default=0)
+    dependencies = db.Column(db.Text, default="[]")
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "username": self.username,
+            "name": self.name,
+            "description": self.description,
+            "due_time": self.due_time,
+            "priority": self.priority,
+            "color_tag": self.color_tag,
+            "status": self.status,
+            "start_date": self.start_date,
+            "time_log": self.time_log,
+            "subtasks": self.subtasks
+        }
+
+@app.route("/templates", methods=["POST"])
+def create_task_template():
+    data = request.json
+    new_template = TaskTemplate(
+        username=data.get('username', 'defaultUser'),
+        name=data['name'],
+        description=data.get('description', ''),
+        due_time=data.get('due_time', ''),
+        priority=data['priority'],
+        color_tag=data.get('color_tag', ''),
+        status=data['status'],
+        start_date=data.get('start_date', ''),
+        time_log=data.get('time_log', ''),
+        subtasks=data.get('subtasks', '[]')
+    )
+
+    db.session.add(new_template)
+    db.session.commit()
+
+    return jsonify({"message": "Task template made", "template": new_template.to_dict()}), 201
+
+@app.route("/tasks", methods=["GET"])
+def get_task_templates():
+    templates = TaskTemplate.query.all()
+    return jsonify([template.to_dict() for template in templates])
+'''
 # LOGIN.PY ------------------------------------
 
 # Database containing user's credentials
