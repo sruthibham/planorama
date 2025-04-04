@@ -10,7 +10,7 @@ import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 import { useRef } from 'react';
 import axios from 'axios';
 import React from 'react';
-
+import StreakTracker from './StreakTracker';
 
 const resizeObserverErrorHandler = (e) => {
   if (e.message.includes("ResizeObserver loop completed with undelivered notifications")) {
@@ -20,6 +20,8 @@ const resizeObserverErrorHandler = (e) => {
 
 window.addEventListener("error", resizeObserverErrorHandler);
 window.addEventListener("unhandledrejection", resizeObserverErrorHandler);
+
+
 
 function DisplayUsername() {
   const { user } = useGlobal();
@@ -79,6 +81,168 @@ function DisplayUsername() {
   )
 }
 
+function TaskTimeCell({ task, onLogClick }) {
+  const total = (task.time_logs || []).reduce((sum, log) => sum + (log.minutes || 0), 0);
+  return (
+    <div className="TaskCell">
+      <div><strong>{total} min</strong></div>
+      <button
+        className="SubtaskButton SubtaskConfirmButton"
+        onClick={onLogClick}
+        style={{ marginTop: "4px" }}
+      >
+        Log Time
+      </button>
+    </div>
+  );
+}
+
+function TaskLogModal({
+  task,
+  onClose,
+  onLogTime,
+  onDeleteLog,
+  logs,
+  logInput,
+  setLogInput,
+  errorMsg,
+  setTasks,
+  setSelectedTaskLogs
+}) {
+  const [editingLogId, setEditingLogId] = useState(null);
+  const [editLogMinutes, setEditLogMinutes] = useState("");
+
+  const handleEditLog = (logId) => {
+    const minutes = parseInt(editLogMinutes);
+    if (isNaN(minutes) || minutes <= 0 || minutes > 1440) {
+      alert("Please enter a time between 1 and 1440 minutes.");
+      return;
+    }
+
+    axios
+      .put(`http://127.0.0.1:5000/tasks/${task.id}/log_time/${logId}`, { minutes })
+      .then((res) => {
+        const updatedLogs = res.data.logs;
+        setSelectedTaskLogs(updatedLogs);
+        setTasks((prev) =>
+          prev.map((t) =>
+            t.id === task.id ? { ...t, time_logs: updatedLogs } : t
+          )
+        );
+        setEditingLogId(null);
+        setEditLogMinutes("");
+      })
+      .catch((err) => console.error(err));
+  };
+
+  return (
+    <div className="modal-overlay" onMouseDown={onClose}>
+      <div className="modal" onMouseDown={(e) => e.stopPropagation()}>
+        <h2>Log Time for {task.name}</h2>
+
+        {logs.map((log) => (
+          <div key={log.id} className="TimeLogEntry">
+            {editingLogId === log.id ? (
+              <>
+                <input
+                  type="number"
+                  value={editLogMinutes}
+                  onChange={(e) => setEditLogMinutes(e.target.value)}
+                  className="TextFields"
+                  style={{ width: "70px" }}
+                />
+                <button onClick={() => handleEditLog(log.id)}>Save</button>
+                <button onClick={() => setEditingLogId(null)}>Cancel</button>
+              </>
+            ) : (
+              <>
+                <span>{log.minutes} min - {log.timestamp}</span>
+                <button
+                  className="EditButton"
+                  onClick={() => {
+                    setEditingLogId(log.id);
+                    setEditLogMinutes(log.minutes);
+                  }}
+                >
+                  Edit
+                </button>
+                <button
+                  className="DeleteButton"
+                  onClick={() => {
+                    axios
+                      .delete(`http://127.0.0.1:5000/tasks/${task.id}/log_time/${log.id}`)
+                      .then((res) => {
+                        const updatedLogs = res.data.logs;
+                        setSelectedTaskLogs(updatedLogs);
+                        setTasks((prev) =>
+                          prev.map((t) =>
+                            t.id === task.id ? { ...t, time_logs: updatedLogs } : t
+                          )
+                        );
+                      })
+                      .catch((err) => console.error(err));
+                  }}
+                >
+                  Delete
+                </button>
+              </>
+            )}
+          </div>
+        ))}
+
+        <div style={{ display: "flex", gap: "10px", alignItems: "center", marginTop: "10px" }}>
+          <input
+            type="number"
+            placeholder="Minutes"
+            value={logInput}
+            onChange={(e) => setLogInput(e.target.value)}
+            className="TextFields"
+          />
+          <button
+            className="SubtaskButton SubtaskConfirmButton"
+            onClick={() => {
+              const minutes = parseInt(logInput);
+              if (isNaN(minutes) || minutes <= 0 || minutes > 1440) {
+                alert("Please enter a time between 1 and 1440 minutes.");
+                return;
+              }
+
+              axios
+                .post(`http://127.0.0.1:5000/tasks/${task.id}/log_time`, { minutes })
+                .then((res) => {
+                  const updatedLogs = res.data.logs;
+                  setSelectedTaskLogs(updatedLogs);
+                  setLogInput("");
+                  setTasks((prev) =>
+                    prev.map((t) =>
+                      t.id === task.id ? { ...t, time_logs: updatedLogs } : t
+                    )
+                  );
+                })
+                .catch((err) => console.error(err));
+            }}
+            style={{ backgroundColor: "#66dd66", color: "#fff", padding: "5px 10px" }}
+          >
+            Log Time
+          </button>
+        </div>
+
+        {errorMsg && <p className="ErrorMessage">{errorMsg}</p>}
+
+        <button
+          className="Buttons"
+          onClick={onClose}
+          style={{ marginTop: "20px" }}
+        >
+          Close
+        </button>
+      </div>
+    </div>
+  );
+}
+
+
+
 function TaskPage() {
   const {user} = useGlobal();
   const [ loggedIn, setLoggedIn ] = useState(false);
@@ -86,7 +250,6 @@ function TaskPage() {
   const [scheduledTasks, setScheduledTasks] = useState([]);
   const [showModal, setShowModal] = useState(false);
   const [newSubtaskName, setNewSubtaskName] = useState("");
-  const [expandedTaskId, setExpandedTaskId] = useState(null);
   const [newTask, setNewTask] = useState({
     username: "",
     name: "",
@@ -96,8 +259,9 @@ function TaskPage() {
     color_tag: "",
     status: "To-Do",
     start_date: "",
-    time_log: "", // This will store the time log for the task
+    time_log: "", 
     subtasks: [],
+    completion_date: ""
 
   });
   const [editingTask, setEditingTask] = useState(null);
@@ -111,10 +275,11 @@ function TaskPage() {
   const [dependencyError, setDependencyError] = useState("");
   const [warning, setWarning] = useState("");
   const [taskWarning, setTaskWarning] = useState("");
+  const [logModalTask, setLogModalTask] = useState(null);
   const [timeLogInput, setTimeLogInput] = useState("");
   const [timeLogError, setTimeLogError] = useState("");
   const [selectedTaskLogs, setSelectedTaskLogs] = useState([]);
-  const [totalTimeSpent, setTotalTimeSpent] = useState(0);
+  const [totalAcrossAllTasks, setTotalAcrossAllTasks] = useState(0);
   const [isAddingSubtask, setIsAddingSubtask] = useState(false);
   const [draggingOverIndex, setDraggingOverIndex] = useState(null);
   const [draggingTaskId, setDraggingTaskId] = useState(null);
@@ -126,6 +291,11 @@ function TaskPage() {
     { name: "blue", value: "#b8dfe6" },
     { name: "purple", value: "#c5bbde"}
   ];
+  useEffect(() => {
+    axios.get("http://127.0.0.1:5000/time_summary")
+      .then(res => setTotalAcrossAllTasks(res.data.total_time_spent))
+      .catch(err => console.error(err));
+  }, [tasks]);
 
   useEffect(() => {
     if (user !== "Guest") {
@@ -147,10 +317,6 @@ function TaskPage() {
       })
       .catch(error => console.error("Error fetching tasks:", error));
   }, [user]);
-
-  const getTotalTime = (task) => {
-    return (task.time_logs || []).reduce((sum, log) => sum + (log.minutes || 0), 0);
-  };
 
   const handleAddSubtask = () => {
     if (!newSubtaskName.trim()) return;
@@ -206,8 +372,8 @@ function TaskPage() {
   };
 
   const handleEditClick = (taskId) => {
-    const taskToEdit = tasks.find(task => task.id === taskId);
-  
+    const taskToEdit = tasks.find(task => task.id === taskId)|| scheduledTasks.find(task => task.id === taskId);
+    if (!taskToEdit) return;
     setEditingTask({ 
       ...taskToEdit, 
       subtasks: taskToEdit.subtasks ? taskToEdit.subtasks : [] // Ensure subtasks exist
@@ -221,6 +387,7 @@ function TaskPage() {
     axios.delete(`http://127.0.0.1:5000/tasks/${taskId}`)
       .then(() => {
         setTasks(tasks.filter(task => task.id !== taskId)); // Remove task from UI
+        setScheduledTasks(prev => prev.filter(task => task.id !== taskId)); // Remove task from scheduled tasks
         setPendingDelete(null); // restore Edit and Delete buttons
         setWarning("");
         setError("");
@@ -250,16 +417,16 @@ function TaskPage() {
     if (pendingDelete === taskId) {
       return (
         <div>
-        <button className="ConfirmButton" onClick={() => handleDeleteConfirm(taskId)}>Confirm</button>
-        <button className="UndoButton" onClick={() => handleDeleteUndo(taskId)}>Undo</button>
+          <button className="ConfirmButton" onClick={() => handleDeleteConfirm(taskId)}>Confirm</button>
+          <button className="UndoButton" onClick={() => handleDeleteUndo(taskId)}>Undo</button>
         </div>
       )
     }
     else {
       return (
         <div>
-        <button className="EditButton" onClick={() => handleEditClick(taskId)}>Edit</button>
-        <button className="DeleteButton" onClick={() => handleDeleteClick(taskId)}>Delete</button>
+          <button className="EditButton" onClick={() => handleEditClick(taskId)}>Edit</button>
+          <button className="DeleteButton" onClick={() => handleDeleteClick(taskId)}>Delete</button>
         </div>
       )
     }
@@ -267,17 +434,53 @@ function TaskPage() {
   };  
 
   const handleChange = (e) => {
+    const { name, value } = e.target;
+  
     if (editingTask) {
-      setEditingTask({ ...editingTask, [e.target.name]: e.target.value });
+      const updatedTask = { ...editingTask, [name]: value };
+  
+      // Trigger warning if completion_date is after due_time
+      if (name === "completion_date" && updatedTask.due_time) {
+        const due = new Date(updatedTask.due_time);
+        const comp = new Date(value);
+        if (comp > due) {
+          setTaskWarning("This completion will not count toward your streak since it is after the due date.");
+        } else {
+          setTaskWarning(""); // Clear warning if it's valid
+        }
+      }
+  
+      setEditingTask(updatedTask);
     } else {
-      setNewTask({ ...newTask, [e.target.name]: e.target.value });
+      const updatedTask = { ...newTask, [name]: value };
+  
+      if (name === "completion_date" && updatedTask.due_time) {
+        const due = new Date(updatedTask.due_time);
+        const comp = new Date(value);
+        if (comp > due) {
+          setTaskWarning("This completion will not count toward your streak since it is after the due date.");
+        } else {
+          setTaskWarning("");
+        }
+      }
+  
+      setNewTask(updatedTask);
     }
   };
+  
 
   const handleSubmit = () => {
     setError("");
     setWarning("");
-  
+    const { due_time, start_date } = newTask;
+    if (start_date && due_time) {
+      const startDateObj = new Date(start_date);
+      const dueDateObj = new Date(due_time);
+      if (startDateObj > dueDateObj) {
+        setError("Start date cannot be after the due date.");
+        return;
+      }
+    }
     axios.post("http://127.0.0.1:5000/tasks", {
       username: user,
       name: newTask.name,
@@ -288,7 +491,9 @@ function TaskPage() {
       status: newTask.status,
       start_date: newTask.start_date,
       time_log: newTask.time_log, 
-      subtasks: newTask.subtasks
+      subtasks: newTask.subtasks,
+      completion_date: newTask.status === "Completed" ? newTask.completion_date : null
+
     })
       .then(response => {
         const addedTask = response.data.task;
@@ -300,7 +505,7 @@ function TaskPage() {
         } else {
           setTasks(prev => [...prev, addedTask]); // Otherwise, add to active tasks
         }
-
+        
         if (response.data.warning) {
           setTaskWarning(response.data.warning);
         }
@@ -315,7 +520,8 @@ function TaskPage() {
           status: "To-Do",
           start_date: "",
           time_log: "", // Reset time log
-          subtasks: []
+          subtasks: [],
+          completion_date: ""
         });
   
         setShowModal(false);
@@ -328,61 +534,62 @@ function TaskPage() {
         }
       });
   };
+
   // Handle manual start of scheduled tasks
   const handleStartNow = (taskId) => {
     axios.put(`http://127.0.0.1:5000/tasks/${taskId}/start_now`)
       .then(() => {
-        window.location.reload();
+        setScheduledTasks(prev => prev.filter(task => task.id !== taskId));
+        axios.get("http://127.0.0.1:5000/tasks")  // Refresh tasks list
+          .then(response => {
+            const today = new Date().toISOString().split("T")[0];
+            const activeTasks = response.data.filter(task => !task.start_date || task.start_date <= today);
+            setTasks(activeTasks);
+          });
       })
       .catch(error => {
         console.error("Error starting task early:", error);
       });
   };
-
-  const handleAddTimeLog = (taskId) => {
-    const minutes = parseInt(timeLogInput);
-    if (isNaN(minutes)) {
-      setTimeLogError("Please enter a valid number.");
-      return;
-    }
-    if (minutes <= 0 || minutes > 1440) {
-      setTimeLogError("Time must be between 1 and 1440 minutes.");
-      return;
-    }
-    axios.post(`http://127.0.0.1:5000/tasks/${taskId}/log_time`, { minutes })
-      .then(res => {
-        setSelectedTaskLogs(res.data.logs);
-        setTotalTimeSpent(res.data.total);
-        setTimeLogInput("");
-        setTimeLogError("");
-      })
-      .catch(err => {
-        console.error(err);
-      });
+  const handleFinishNow = (taskId) => {
+    const taskToFinish = scheduledTasks.find(task => task.id === taskId);
+    if (!taskToFinish) return;
+  
+    const today = new Date().toISOString().split("T")[0];
+  
+    axios.put(`http://127.0.0.1:5000/tasks/${taskId}`, {
+      username: user,
+      name: taskToFinish.name,
+      description: taskToFinish.description,
+      due_time: taskToFinish.due_time,
+      priority: taskToFinish.priority,
+      color_tag: taskToFinish.color_tag,
+      status: "Completed",
+      start_date: null,
+      time_logs: taskToFinish.time_logs || [],
+      subtasks: taskToFinish.subtasks || [],
+      completion_date: today
+    }).then(res => {
+      setScheduledTasks(prev => prev.filter(t => t.id !== taskId));
+      setTasks(prev => [...prev, res.data.task]);
+    }).catch(err => console.error("Finish failed:", err));
   };
   
-  const handleDeleteTimeLog = (taskId, logId) => {
-    axios.delete(`http://127.0.0.1:5000/tasks/${taskId}/log_time/${logId}`)
-      .then(res => {
-        setSelectedTaskLogs(res.data.logs);
-        setTotalTimeSpent(res.data.total);
-      })
-      .catch(err => console.error(err));
-  };
   
-  const fetchTimeLogs = (taskId) => {
-    const task = tasks.find(t => t.id === taskId);
-    setEditingTask(task);
-    setShowModal(true);
-    axios.get(`http://127.0.0.1:5000/tasks/${taskId}`)
-      .then(res => {
-        setSelectedTaskLogs(res.data.time_logs || []);
-        setTotalTimeSpent(res.data.total_time || 0);
-      })
-      .catch(err => console.error(err));
-  };
   // modify task in DB and UI
-  const handleUpdateTask = () =>{
+  const handleUpdateTask = () => {
+    setError("");
+  
+    const { start_date, due_time } = editingTask;
+    if (start_date && due_time) {
+      const startDateObj = new Date(start_date);
+      const dueDateObj = new Date(due_time);
+      if (startDateObj > dueDateObj) {
+        setError("Start date cannot be after the due date.");
+        return;
+      }
+    }
+  
     axios.put(`http://127.0.0.1:5000/tasks/${editingTask.id}`, {
       username: user,
       name: editingTask.name,
@@ -392,26 +599,37 @@ function TaskPage() {
       color_tag: editingTask.color_tag,
       status: editingTask.status,
       start_date: editingTask.start_date,
-      time_log: editingTask.time_log, 
-      subtasks: editingTask.subtasks || []
+      time_log: editingTask.time_log,
+      subtasks: editingTask.subtasks || [],
+      completion_date: editingTask.status === "Completed" ? editingTask.completion_date : null
     })
       .then(response => {
-        setTasks(tasks.map(task =>
-          task.id === editingTask.id ? response.data.task : task
-        ));
+        const updatedTask = response.data.task;
+        const today = new Date().toISOString().split("T")[0];
+  
+        if (updatedTask.start_date && updatedTask.start_date > today) {
+          // Move to scheduled tasks
+          setScheduledTasks(prev => [...prev, updatedTask]);
+          setTasks(prev => prev.filter(t => t.id !== updatedTask.id));
+        } else {
+          // Move to active tasks
+          setTasks(prev => prev.map(t => t.id === updatedTask.id ? updatedTask : t));
+          setScheduledTasks(prev => prev.filter(t => t.id !== updatedTask.id));
+        }
+  
         setEditingTask(null);
         setShowModal(false);
       })
-      .catch(error =>  {
+      .catch(error => {
         if (error.response) {
           setError(error.response.data.error);
         } else {
-          console.error("Error creating task:", error);
+          console.error("Error updating task:", error);
         }
-      })
-  }
-
-   const formatDate = (dateString) => {
+      });
+  };
+  
+  const formatDate = (dateString) => {
     if (!dateString) return "";
     const [year, month, day] = dateString.split("-");
     return `${month}/${day}/${year}`;
@@ -439,7 +657,7 @@ function TaskPage() {
     filteredTasks = filteredTasks.filter((task) => 
       task.color_tag === filterColor);
   }
-  
+  const navigate = useNavigate()
   return (
     <div>
       <h1 className="App">Your Tasks</h1>
@@ -481,11 +699,21 @@ function TaskPage() {
               <option value="Completed">Completed</option>
             </select>
           </div>
-          <div className="TaskCell">Time Spent</div>
           <div className="TaskCell">Deadline</div>
+          <div className="TaskCell">Time Spent</div>
           <div className="TaskCell">Dependencies</div>
           <div className="TaskCell">Make Changes</div>
         </div>
+
+        {taskWarning && (
+          <div className="modal-overlay" onMouseDown={() => setTaskWarning("")}>
+            <div className="modal" onMouseDown={(e) => e.stopPropagation()}>
+              <h3>⚠️ Heads up!</h3>
+              <p>{taskWarning}</p>
+              <button className="Buttons" onClick={() => setTaskWarning("")}>Got it</button>
+            </div>
+          </div>
+        )}
 
         {tasks.length === 0 ? (
           <div>No tasks available.</div>
@@ -583,9 +811,25 @@ function TaskPage() {
                             ) : null}
                           </td>
                           <div className="TaskCell">{task.priority}</div>
-                          <div className="TaskCell">{task.status}</div>
-                          <TaskTimeCell task={task} onLogClick={handleEditClick} />
+                          <div className="TaskCell">
+                            {task.status}
+                            {task.status === "Completed" && task.completion_date && (
+                              <span style={{ fontSize: "12px", display: "block" }}>
+                                ({formatDate(task.completion_date)})
+                              </span>
+                            )}
+                          </div>
                           <div className="TaskCell">{formatDate(task.due_time)}</div>
+                          
+                          <div className="TaskCell">
+                            {task.status}
+                            {task.status === "Completed" && task.completion_date && (
+                              <span style={{ fontSize: "12px", display: "block" }}>
+                                ({formatDate(task.completion_date)})
+                              </span>
+                            )}
+                          </div>
+                          
                           <div className="TaskCell">
                             {(task.dependencies || []).map((depId, idx) => {
                               const dep = tasks.find(t => t.id === depId);
@@ -628,21 +872,34 @@ function TaskPage() {
           <h3 style={{ fontSize: "16px", fontWeight: "bold" }}>Scheduled Tasks</h3>
           <div className="ScheduledTaskContainer">
             {scheduledTasks.map(task => (
-              <div key={task.id} className="ScheduledTask" style={{
-                backgroundColor: task.color_tag || '#faf7f0',
-                fontSize: "14px",
-                padding: "5px",
-                borderRadius: "5px",
-                marginBottom: "5px"
-              }}>
+              <div
+                key={task.id}
+                className="ScheduledTask"
+                style={{
+                  backgroundColor: task.color_tag || '#faf7f0',
+                  fontSize: "14px",
+                  padding: "5px",
+                  borderRadius: "5px",
+                  marginBottom: "5px"
+                }}
+              >
                 <div>{task.name}</div>
                 <div style={{ fontSize: "12px", color: "#555" }}>Starts on: {formatDate(task.start_date)}</div>
-                <button className="ConfirmButton" onClick={() => handleStartNow(task.id)}>Start Now</button>
+                <div style={{ display: "flex", gap: "8px", marginTop: "8px" }}>
+                  <button className="EditButton" onClick={() => handleEditClick(task.id)}>Edit</button>
+                  <button className="DeleteButton" onClick={() => handleDeleteClick(task.id)}>Delete</button>
+                  <button className="ConfirmButton" onClick={() => handleStartNow(task.id)}>Start Now</button>
+                  <button className="ConfirmButton" onClick={() => handleFinishNow(task.id)}>Finish</button>
+                </div>
               </div>
             ))}
           </div>
         </div>
       )}
+
+      <div className="TimeSummary">
+        <h3>Total Time Spent Across All Tasks: {totalAcrossAllTasks} min</h3>
+      </div>
 
       </div>
 
@@ -652,6 +909,9 @@ function TaskPage() {
       { !loggedIn &&
         <h3 style={{textAlign: "center"}}>Log in to start making tasks!</h3>
       } 
+      <button className="Buttons" onClick={() => navigate('/streak')} style={{ margin: "10px auto", display: "block" }}>
+        Streak Tracker
+      </button>
 
       {dependencyError && (
         <div className="TaskWarning">
@@ -665,6 +925,19 @@ function TaskPage() {
           <p>{taskWarning}</p>
           <button onClick={() => setTaskWarning("")} className="CloseWarningButton">✖</button>
           </div>)}
+      
+      {logModalTask && (
+        <TaskLogModal
+          task={logModalTask}
+          logs={selectedTaskLogs}
+          logInput={timeLogInput}
+          setLogInput={setTimeLogInput}
+          errorMsg={timeLogError}
+          onClose={() => setLogModalTask(null)}
+          setTasks={setTasks} 
+          setSelectedTaskLogs={setSelectedTaskLogs}
+        />
+      )}
 
       {showModal && (
         <div 
@@ -715,39 +988,18 @@ function TaskPage() {
               onChange={handleChange} 
               className="TextFields" 
             />
-            <input type="date" name="due_time" 
+            <input type="date" name="due_time"  
               value={editingTask ? editingTask.due_time : newTask.due_time}
               onChange={handleChange} 
               className="TextFields" required 
             />
             {/* Added start_date input */}
-            <input type="date" name="start_date"
+            <label style={{ fontSize: "14px", marginTop: "10px" }}>Start Date (optional)</label>
+            <input type="date" name="start_date" 
               value={editingTask ? editingTask.start_date : newTask.start_date}
               onChange={handleChange}
               className="TextFields"
             />
-            <div className="TimeLogSection">
-              <h3>Time Logs</h3>
-              {selectedTaskLogs.map(log => (
-                <div key={log.id} className="TimeLogEntry">
-                  <span>{log.minutes} min - {log.timestamp}</span>
-                  <button onClick={() => handleDeleteTimeLog(editingTask.id, log.id)}>Delete</button>
-                </div>
-              ))}
-              <div style={{ display: "flex", gap: "10px", alignItems: "center", marginTop: "10px" }}>
-                <input
-                  type="number"
-                  placeholder="Minutes"
-                  value={timeLogInput}
-                  onChange={(e) => setTimeLogInput(e.target.value)}
-                  className="TextFields"
-                />
-                <button className="SubtaskButton SubtaskConfirmButton" onClick={() => handleAddTimeLog(editingTask.id)}>Log Time</button>
-              </div>
-              {timeLogError && <p className="ErrorMessage">{timeLogError}</p>}
-              <p><strong>Total Time Spent:</strong> {totalTimeSpent} min</p>
-            </div>
-            <h3>Total Time Spent Across All Tasks: {totalTimeSpent} min</h3>
             <select name="priority" onChange={handleChange} className="TextFields"
               value={editingTask ? editingTask.priority : newTask.priority}
             >
@@ -774,6 +1026,21 @@ function TaskPage() {
               <option value="In Progress">In Progress</option>
               <option value="Completed">Completed</option>
             </select>
+
+            {(editingTask?.status === "Completed" || newTask.status === "Completed") && (
+              <>
+                <label style={{ fontSize: "14px", marginTop: "10px" }}>Completion Date</label>
+                <input
+                  type="date"
+                  name="completion_date"
+                  value={editingTask ? editingTask.completion_date : newTask.completion_date}
+                  onChange={handleChange}
+                  className="TextFields"
+                  required
+                />
+              </>
+            )}
+
             {(editingTask || newTask) && (
               <div className="SubtaskContainer" style={{ textAlign: "left", width: "100%" }}>
                 <h3>Subtasks</h3>
@@ -978,21 +1245,6 @@ function TaskPage() {
   );
 }
 
-function TaskTimeCell({ task, onLogClick }) {
-  const total = (task.time_logs || []).reduce((sum, log) => sum + (log.minutes || 0), 0);
-  return (
-    <div className="TaskCell">
-      <div><strong>{total} min</strong></div>
-      <button
-        className="SubtaskButton SubtaskConfirmButton"
-        onClick={() => onLogClick(task.id)}
-        style={{ marginTop: "4px" }}
-      >
-        Log Time
-      </button>
-    </div>
-  );
-}
 
 function CreateAccountPage() {
   const [username, setUsername] = useState("");
@@ -1751,6 +2003,7 @@ function App() {
             <Route path="/profile" element={<ProfilePage />} />
             <Route path="/profile/:usern/from/:camefrom" element={<ViewProfile />} />
             <Route path="/settings" element={<SettingsPage />} />
+            <Route path="/streak" element={<StreakTracker />} />
             <Route path="/teams" element={<TeamsPage />} />
             <Route path="/team/:teamID" element={<TeamPage />} />
             <Route path="/templates" element={<TemplatesPage />} />
