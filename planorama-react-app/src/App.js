@@ -3,7 +3,7 @@ import ProfilePage from './ProfilePage';
 import SettingsPage from './SettingsPage';
 import TaskDependenciesPage from './TaskDependenciesPage';
 import { BrowserRouter as Router, Routes, Route, useNavigate, useParams } from 'react-router-dom';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, createContext, useContext } from 'react';
 import { GlobalProvider, useGlobal } from "./GlobalContext";
 import { IoSettingsOutline } from "react-icons/io5";
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
@@ -243,11 +243,55 @@ function TaskLogModal({
 }
 
 
+/*
+
+const TasksContext = createContext();
+
+export function TasksProvider({ children }) {
+  const [tasks, setTasks] = useState([]);
+  const [archivedTasks, setArchivedTasks] = useState([]);
+
+  const archiveTask = (taskId) => {
+    const taskToArchive = tasks.find((task) => task.id === taskId);
+
+    if (taskToArchive) {
+      const updatedTasks = tasks.filter((task) => task.id !== taskId);
+
+      setArchivedTasks((prevArchivedTasks) => [
+        ...prevArchivedTasks,
+        taskToArchive,
+      ]);
+
+      setTasks(updatedTasks);
+    }
+  };
+
+  return (
+    <TasksContext.Provider value={{ tasks, setTasks, archivedTasks, setArchivedTasks, archiveTask}}>
+      {children}
+    </TasksContext.Provider>
+  )
+}
+
+*/
+
+//const useTasks = () => useContext(TasksContext);
+
 
 function TaskPage() {
   const {user} = useGlobal();
   const [ loggedIn, setLoggedIn ] = useState(false);
+  //const {tasks, setTasks} = useTasks();
+  //const {archivedTasks, setArchivedTasks} = useTasks();
   const [tasks, setTasks] = useState([]);
+  const [archivedTasks, setArchivedTasks] = useState([]); //for the archived tasks
+  const [showArchived, setShowArchived] = useState(false);
+  const [showArchiveModal, setShowArchiveModal] = useState(false);
+  const [autoArchiveEnabled, setAutoArchiveEnabled] = useState(false);
+  const [archivePeriod, setArchivePeriod] = useState("weekly");
+  const [archiveTime, setArchiveTime] = useState("12:00");
+  const [showTemplateModal, setShowTemplateModal] = useState(false);
+  const [taskTemplates, setTaskTemplates] = useState([]);
   const [scheduledTasks, setScheduledTasks] = useState([]);
   const [showModal, setShowModal] = useState(false);
   const [newSubtaskName, setNewSubtaskName] = useState("");
@@ -297,6 +341,9 @@ function TaskPage() {
       .then(res => setTotalAcrossAllTasks(res.data.total_time_spent))
       .catch(err => console.error(err));
   }, [tasks]);
+
+  const [isCheck, setIsCheck] = useState(false);
+  const [completedTasks, setCompletedTasks] = useState({});
 
   useEffect(() => {
     if (user !== "Guest") {
@@ -433,6 +480,84 @@ function TaskPage() {
     }
     
   };  
+
+  const closeArchiveModal = () => {
+    setShowArchiveModal(false);
+  }
+
+  const archiveTask = (taskId) => {
+    const taskToArchive = tasks.find((task) => task.id === taskId);
+
+    if (taskToArchive) {
+      const updatedTasks = tasks.filter((task) => task.id !== taskId);
+
+      setArchivedTasks((prevArchivedTasks) => [
+        ...prevArchivedTasks,
+        taskToArchive,
+      ]);
+
+      setTasks(updatedTasks);
+    }
+  };
+
+  const unarchiveTask = (taskId) => {
+    const taskToUnarchive = archivedTasks.find((task) => task.id === taskId);
+
+    if (taskToUnarchive) {
+      const updatedTasks = archivedTasks.filter((task) => task.id !== taskId);
+
+      setTasks((prevTasks) => [
+        ...prevTasks,
+        taskToUnarchive,
+      ]);
+
+      setArchivedTasks(updatedTasks);
+    }
+  }
+
+  const createTaskFromTemplate = () => {
+
+  }
+
+  const editTemplate = () => {
+
+  }
+
+  const deleteTemplate = () => {
+
+  }
+
+  //for the colors before they were marked completed
+  const[originalColors, setOriginalColors] = useState(new Map());
+
+  //jack
+  //mark as complete check mark
+  const markComplete = (taskId) => {
+
+    setTasks((prevTasks) =>
+      prevTasks.map((task) => {
+        if (task.id === taskId) {
+          if (!task.completed) {
+            setOriginalColors((prev) => prev.set(task.id, task.color_tag));
+            return {
+              ...task,
+              completed: true, 
+              color_tag: "#90EE90",
+            };
+          } else {
+
+            const originalColor = originalColors.get(task.id);
+            return {
+              ...task,
+              completed: false, 
+              color_tag: originalColor,
+            };
+          }
+        }
+        return task;
+      })
+    );
+  };
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -663,6 +788,11 @@ function TaskPage() {
       task.color_tag === filterColor);
   }
   const navigate = useNavigate()
+
+  const handleMarkComplete = () => {
+
+  }
+  
   return (
     <div>
       <h1 className="App">Your Tasks</h1>
@@ -670,6 +800,9 @@ function TaskPage() {
       <h2>Active Tasks</h2>
       <div className="TaskTable">
         <div className="TaskRow TaskHeader">
+          <label>
+            Mark as complete:
+          </label>
           <label>
             Filter:  
           </label>
@@ -708,6 +841,7 @@ function TaskPage() {
           <div className="TaskCell">Time Spent</div>
           <div className="TaskCell">Dependencies</div>
           <div className="TaskCell">Make Changes</div>
+          <div className="TaskCell">Notes</div>
         </div>
 
         {taskWarning && (
@@ -796,6 +930,24 @@ function TaskPage() {
                               : "none",
                           }}
                         >
+                          <div className="TaskCell">
+                            <input
+                              type="checkbox"
+                              checked={task.completed}
+                              onChange={() => markComplete(task.id)}
+                            />
+                            {task.completed && (
+                              <button
+                                className="ArchiveButton"
+                                onClick={() => archiveTask(task.id)}
+                              >
+                                Archive
+                              </button>
+                            )}
+                            {task.complete ? (
+                              <button onClick={() => alert("Task Completed!")}>Completed</button>
+                            ) : null}
+                          </div>
                           <div className="Task"></div>
                           <div className="Task"></div>
                           <div className="TaskCell">{task.name}</div>
@@ -856,6 +1008,7 @@ function TaskPage() {
                             })}
                           </div>
                           <div className="TaskCell">{deleteButtons(task.id)}</div>
+                          <div className="TaskCell">{<Notes />}</div>
                         </div>
                       )}
                     </Draggable>
@@ -917,7 +1070,87 @@ function TaskPage() {
 
       { loggedIn &&
         <button className="MakeTaskButton" onClick={() => setShowModal(true)}>Create Task</button>
-      }
+      } 
+      {loggedIn && (
+        <>
+        <button className="ArchiveButton" onClick={() => setShowArchiveModal(true)}>All Archived</button>
+        {showArchiveModal && (
+          <div className="Modal">
+            <div className="ArchiveModal">
+              <button onClick={closeArchiveModal} className="CloseArchiveButton">Close</button>
+              <h3>Archived Tasks</h3>
+              <div className="AutoArchiveSettings">
+                <label>
+                  <input
+                    type="checkbox"
+                    checked={autoArchiveEnabled}
+                    onChange={() => setAutoArchiveEnabled(!autoArchiveEnabled)}
+                  />
+                  Enable Auto-Archival
+                </label>
+
+                <select
+                  value={archivePeriod}
+                  onChange={(e) => setArchivePeriod(e.target.value)}
+                >
+                  <option value="daily">Daily</option>
+                  <option value="weekly">Weekly</option>
+                  <option value="monthly">Monthly</option>
+                </select>
+
+                <input
+                  type="time"
+                  value={archiveTime}
+                  onChange={(e) => setArchiveTime(e.target.value)}
+                />
+              </div>
+              {archivedTasks.length > 0 ? (
+                archivedTasks.map((task) => (
+                  <div key={task.id} className="ArchivedTask">
+                    <input
+                      type="checkbox"
+                      checked={!task.completed}
+                      onChange={() => unarchiveTask(task.id)}
+                    />
+                    {task.name}
+                  </div>
+                ))
+              ) : (
+                <p>No archived tasks.</p>
+              )}
+            </div>
+          </div>
+        )}
+
+        <button className="TemplateButton" onClick={() => setShowTemplateModal(true)}>Templates</button>
+        {showTemplateModal && (
+          <div className="Modal">
+            <div className="TemplateModalContent">
+              <button onClick={() => setShowTemplateModal(false)} className="CloseArchiveButton">Close</button>
+              <h3>Task Templates</h3>
+
+              {taskTemplates.length > 0 ? (
+                taskTemplates.map((template) => (
+                  <div key={template.id} className="TemplateCard">
+                    <div className="TemplateInfo">
+                      <strong>{template.name}</strong>
+                      <p>{template.description}</p>
+                    </div>
+                    <div className="TemplateActions">
+                      <button onClick={() => createTaskFromTemplate(template)}>New</button>
+                      <button onClick={() => editTemplate(template)}>Edit</button>
+                      <button onClick={() => deleteTemplate(template)}>Delete</button>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <p>No templates.</p>
+              )}
+            </div>
+          </div>
+        )}
+        </>
+      )}
       { !loggedIn &&
         <h3 style={{textAlign: "center"}}>Log in to start making tasks!</h3>
       } 
@@ -1888,19 +2121,6 @@ function TemplatesPage() {
           <div className="TaskCell">Dependencies</div>
           <div className="TaskCell">Make Changes</div>
         </div>
-
-        <div>
-          <ul>
-            {templates.map((template) => (
-              <li key={template.id}>
-                <strong>{template.name}</strong> - {template.priority} ({template.status})
-                <p>{template.description}</p>
-                <p>Due Date: {template.due_time}</p>
-                <p>Start Date: {template.start_date}</p>
-              </li>
-            ))}
-          </ul>
-        </div>
       </div>
 
       <div>
@@ -1987,6 +2207,71 @@ function TemplatesPage() {
   )
 }
 
+//Jack did this
+function Notes() {
+  const [showNotes, setShowNotes] = useState(false);
+  const [edit, setEdit] = useState();
+  //const [notes, setNotes] = useState([]);
+
+  const applyFormating = (format) => {
+    console.log(format)
+  }
+
+
+  return (
+      <div>
+        <button className="NotesButton" onClick={() => setShowNotes(!showNotes)}> 
+          {showNotes ? "Close Notes" : "Open Notes"}
+        </button>
+
+        {showNotes && (
+          <div>
+            <h3>Notes</h3>
+            <button className="BoldButton" onClick={() => applyFormating("bold")}>Bold</button>
+            <button className="BulletButton" onClick={() => applyFormating("bullet")}>Bullet</button>
+            <button className="ItalicsButton" onClick={() => applyFormating("italics")}>Italics</button>
+
+            <textarea
+              value={edit}
+              onChange={(e) => setEdit(e.target.value)}
+              placeholder="Put notes here..."
+              rows={5}
+            />
+
+
+          </div>
+        )}
+
+      </div>
+  );
+
+}
+
+function ArchivePage() {
+  
+  return (
+    <div>
+      <h1>Archived Tasks</h1>
+      {/*
+      {archivedTasks.length === 0 ? (
+        <p>No tasks archived.</p>
+      ) : (
+        <div className="TaskList">
+          {archivedTasks.map((task) => (
+            <div key={task.id} className="TaskRow">
+              <div className="TaskCell">{task.name}</div>
+              <div className="TaskCell">{task.status}</div>
+              <div className="TaskCell">{task.priority}</div>
+              <div className="TaskCell">{task.due_time}</div>
+            </div>
+          ))}
+        </div>
+      )}
+      */}
+    </div>
+  );
+}
+
 function NavigationButtons() {
   const navigate = useNavigate();
 
@@ -2005,6 +2290,7 @@ function NavigationButtons() {
       </button> */}
       <button className='Buttons' style={{marginLeft: 5}} onClick={() => navigate('/gensearch')}>Search</button>
       <button className='Buttons' style={{marginLeft: 5}} onClick={() => navigate('/templates')}>Templates</button>
+      <button className='Buttons' style={{marginLeft: 5}} onClick={() => navigate('/archive')}>Archive</button>
       <div className="SettingsButton" onClick={() => navigate('/settings')}> 
         <IoSettingsOutline />
       </div>
@@ -2030,6 +2316,7 @@ function App() {
             <Route path="/teams" element={<TeamsPage />} />
             <Route path="/team/:teamID" element={<TeamPage />} />
             <Route path="/templates" element={<TemplatesPage />} />
+            <Route path="/archive" element={<ArchivePage />} />
             <Route path="/gensearch" element={<SearchPage />} />
             <Route path="/dependencies" element={<TaskDependenciesPage />} />
           </Routes>

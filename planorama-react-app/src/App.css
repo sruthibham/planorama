@@ -26,6 +26,16 @@ body {
   align-items: center;
 }
 
+.ArchiveModal {
+  background-color: white;
+  padding: 20px;
+  border-radius: 8px;
+  max-height: 200px;
+  overflow-y: auto;
+  width: 90%;
+  max-width: 400px;
+}
+
 .modal {
   width: 50%;
   max-width: 500px;
@@ -55,7 +65,7 @@ body {
 
 .TaskRow {
   display: grid;
-  grid-template-columns: 0.25fr 0.75fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr; /* Filter, Color, Task, Priority, Status, Deadline, Make Changes */
+  grid-template-columns: 1fr 0.25fr 0.75fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr; /* Mark as Complete, Filter, Color, Task, Priority, Status, Deadline, Make Changes, notes */
   align-items: center;
   padding: 10px;
   border-bottom: 1px solid #ccc;
@@ -127,6 +137,117 @@ body {
 
 .UndoButton:hover {
   background-color: #2b44c0;
+}
+
+.BoldButton {
+  padding: 5px 5px;
+  border: none;
+  background-color: #92b1fb;
+  color: white;
+  cursor: pointer;
+  border-radius: 5px;
+  margin: 5px;
+}
+
+.BoldButton:hover {
+  background-color: #7087f7;
+}
+
+.BulletButton {
+  padding: 5px 5px;
+  border: none;
+  background-color: #92fba0;
+  color: white;
+  cursor: pointer;
+  border-radius: 5px;
+  margin: 5px;
+}
+
+.BulletButton:hover {
+  background-color: #70f792;
+}
+
+.ItalicsButton {
+  padding: 5px 5px;
+  border: none;
+  background-color: #fbdd92;
+  color: white;
+  cursor: pointer;
+  border-radius: 5px;
+  margin: 5px;
+}
+
+.ItalicsButton:hover {
+  background-color: #f7c170;
+}
+
+.NotesButton {
+  padding: 5px 10px;
+  border: none;
+  background-color: #60a5ca;
+  color: white;
+  cursor: pointer;
+  border-radius: 5px;
+  margin: 5px;
+}
+
+.NotesButton:hover {
+  background-color: #1899c0;
+}
+
+.ArchiveButton {
+  padding: 5px 5px;
+  border: none;
+  background-color: #525251;
+  color: white;
+  cursor: pointer;
+  border-radius: 5px;
+  margin: 5px;
+}
+
+.ArchiveButton:hover {
+  background-color: #232322;
+}
+
+.CloseArchiveButton {
+  padding: 5px 5px;
+  border: none;
+  background-color: #525251;
+  color: white;
+  cursor: pointer;
+  border-radius: 5px;
+  margin: 5px;
+}
+
+.CloseArchiveButton:hover {
+  background-color: #232322;
+}
+
+.AutoArchiveSettings {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  align-items: center;
+  margin-bottom: 15px;
+}
+.AutoArchiveSettings label {
+  display: flex;
+  gap: 5px;
+  align-items: center;
+}
+
+.TemplateButton {
+  padding: 5px 5px;
+  border: none;
+  background-color: #efa143;
+  color: white;
+  cursor: pointer;
+  border-radius: 5px;
+  margin: 5px;
+}
+
+.TemplateButton:hover {
+  background-color: #e68d22;
 }
 
 .MakeTaskButton {
