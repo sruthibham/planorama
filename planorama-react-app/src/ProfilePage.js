@@ -6,16 +6,17 @@ const ProfilePage = () => {
     const [selectedFile, setSelectedFile] = useState(null);
     const [preview, setPreview] = useState('');
     const [message, setMessage] = useState('');
-    const [isEditing, setIsEditing] = useState(false);  // Track if we are in edit mode
+    const [isEditing, setIsEditing] = useState(false);
     const [newUsername, setNewUsername] = useState(profile.username);
 
+
     useEffect(() => {
-        fetch('/get_profile?user_id=1') // Replace with actual user ID
+        fetch('/get_profile?user_id=1')
             .then(response => response.json())
             .then(data => {
                 if (!data.error) {
                     setProfile(data);
-                    setNewUsername(data.username); // Set initial username
+                    setNewUsername(data.username);
                 }
             });
     }, []);
@@ -54,7 +55,7 @@ const ProfilePage = () => {
     const handleSaveProfile = async () => {
         const response = await fetch('/update_profile', {
             method: 'POST',
-            body: JSON.stringify({ user_id: 1, username: newUsername }), // Replace with actual user ID
+            body: JSON.stringify({ user_id: 1, username: newUsername }),
             headers: { 'Content-Type': 'application/json' }
         });
         const result = await response.json();
@@ -64,9 +65,9 @@ const ProfilePage = () => {
         } else {
             setMessage(result.error);
         }
-        setIsEditing(false); // Exit edit mode after saving
+        setIsEditing(false);
     };
-
+    
     return (
         <div className="ProfileContainer">
             <h2 className="ProfileTitle">{profile.username}'s Profile</h2>
@@ -82,7 +83,6 @@ const ProfilePage = () => {
                 <button className="ProfileUploadButton" onClick={handleUpload}>Upload Profile Picture</button>
             </div>
 
-            {/* Edit Profile Button */}
             {!isEditing ? (
                 <button className="ProfileEditButton" onClick={() => setIsEditing(true)}>Edit Profile</button>
             ) : (
@@ -105,6 +105,7 @@ const ProfilePage = () => {
                 <h3>Achievements</h3>
                 <p>{profile.achievements || 'No achievements yet.'}</p>
             </div>
+
         </div>
     );
 };

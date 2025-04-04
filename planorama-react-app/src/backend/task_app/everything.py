@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 import os
 import re # Regex for password checking
 from werkzeug.utils import secure_filename
@@ -9,6 +9,7 @@ from flask_cors import CORS
 import json
 import threading
 import time
+
 
 app = Flask(__name__)
 CORS(app)
@@ -47,6 +48,8 @@ class Task(db.Model):
     subtasks = db.Column(db.Text, default="[]", nullable=True)
     start_date = db.Column(db.String(50), nullable=True)  # New Field
     time_logs = db.Column(db.Text, default="[]", nullable=True)
+    completion_date = db.Column(db.String(50), nullable=True)  # <-- Add this field
+
 
     def get_subtasks(self):
         try:
@@ -82,19 +85,22 @@ def get_tasks():
     # for task in tasks:
     #     if (task.user == currentUser):
     #         usersTasks.append(task)
-    return jsonify([{
-        "username": currentUser,
-        "id": task.id,
-        "name": task.name,
-        "description": task.description,
-        "due_time": task.due_time,
-        "priority": task.priority,
-        "color_tag": task.color_tag,
-        "status": task.status,
-        "start_date": task.start_date,
-        "time_logs": task.get_time_logs(),
-        "subtasks": task.get_subtasks()
-    } for task in tasks])
+    return jsonify([
+        {
+            "username": currentUser,
+            "id": task.id,
+            "name": task.name,
+            "description": task.description,
+            "due_time": task.due_time,
+            "priority": task.priority,
+            "color_tag": task.color_tag,
+            "status": task.status,
+            "start_date": task.start_date,
+            "time_logs": task.get_time_logs(),
+            "subtasks": task.get_subtasks()
+        } for task in tasks
+    ])
+
 
 # Retrieve SCHEDULED tasks
 @app.route("/scheduled_tasks", methods=["GET"])
@@ -142,6 +148,18 @@ def add_task():
         return jsonify({"error": f"Invalid priority. Must be one of {PRIORITY_OPTIONS}"}), 400
     if data["status"] not in STATUS_OPTIONS:
         return jsonify({"error": f"Invalid status. Must be one of {STATUS_OPTIONS}"}), 400
+    warning = None
+    completion_date = None
+    if data["status"] == "Completed":
+        completion_date = data.get("completion_date", datetime.today().strftime("%Y-%m-%d"))
+        try:
+            due_date_dt = datetime.strptime(data["due_time"], "%Y-%m-%d").date()
+            completion_dt = datetime.strptime(completion_date, "%Y-%m-%d").date()
+            if completion_dt > due_date_dt:
+                warning = "This completion will not count toward your streak since it is after the due date."
+        except ValueError:
+            pass
+
 
     existing_task = Task.query.filter_by(user=data["username"], name=data["name"], due_time=str(due_date)).first()
     if existing_task:
@@ -159,7 +177,8 @@ def add_task():
         priority=data["priority"],
         color_tag=data.get("color_tag"),
         status=data.get("status", "To-Do"),
-        start_date=start_date
+        start_date=start_date,
+        completion_date=completion_date
     )
     new_task.set_subtasks(subtasks)
 
@@ -179,6 +198,7 @@ def add_task():
         "subtasks": new_task.get_subtasks()
     }}), 201
 
+
 # Move scheduled tasks to active at midnight
 def auto_move_tasks():
     while True:
@@ -192,24 +212,95 @@ def auto_move_tasks():
 # Start the background thread
 threading.Thread(target=auto_move_tasks, daemon=True).start()
 
+def rebuild_streak(username):
+    tasks = Task.query.filter_by(user=username).all()
+
+    # Map completion dates
+    completed_by_date = {}
+    for task in tasks:
+        if task.status == "Completed" and task.completion_date:
+            try:
+                comp_date = datetime.strptime(task.completion_date, "%Y-%m-%d").date()
+                due_date = datetime.strptime(task.due_time, "%Y-%m-%d").date()
+                if comp_date <= due_date:
+                    completed_by_date.setdefault(task.completion_date, []).append(task)
+            except ValueError:
+                continue
+
+    # Map active tasks by date (check tasks with no start_date or start_date <= date)
+    active_by_date = {}
+    today = datetime.today().date()
+    for i in range(30):
+        check_date = today - timedelta(days=i)
+        check_str = check_date.strftime("%Y-%m-%d")
+        active_tasks = [
+            task for task in tasks
+            if not task.start_date or datetime.strptime(task.start_date, "%Y-%m-%d").date() <= check_date
+        ]
+        active_by_date[check_str] = active_tasks
+
+    history = []
+    for i in range(30):
+        date = (today - timedelta(days=i)).strftime("%Y-%m-%d")
+        active_tasks = active_by_date.get(date, [])
+        completed_today = date in completed_by_date
+
+        if not active_tasks:
+            completed = True  # No tasks → do not break the streak
+        else:
+            completed = completed_today  # Must have completed something if tasks existed
+
+        history.append({"date": date, "completed": completed})
+
+    # Calculate current streak (start from today and count until a miss)
+    current_streak = 0
+    for entry in history:
+        if entry["completed"]:
+            current_streak += 1
+        else:
+            break
+
+    # Calculate highest streak over all days
+    highest_streak = 0
+    streak = 0
+    for entry in history:
+        if entry["completed"]:
+            streak += 1
+            highest_streak = max(highest_streak, streak)
+        else:
+            streak = 0
+
+    user_streak = UserStreak.query.filter_by(username=username).first()
+    if not user_streak:
+        user_streak = UserStreak(username=username)
+        db.session.add(user_streak)
+
+    user_streak.current_streak = current_streak
+    user_streak.highest_streak = highest_streak
+    user_streak.total_days = sum(1 for h in history if h["completed"])
+    user_streak.history = json.dumps(history)
+
+    db.session.commit()
+
+
 @app.route("/tasks/<int:task_id>", methods=["DELETE"])
 def delete_task(task_id):
     task = Task.query.get(task_id)
     if not task:
-        return jsonify({"error": "Task not found"}), 404
-
+        return jsonify({"error": "Task not found"}), 404 
+    username = task.user
     db.session.delete(task)  # Remove task from database
     db.session.commit()  # Save changes
+    rebuild_streak(username)
     return jsonify({"message": "Task deleted successfully"}), 200
 
 @app.route("/tasks/<int:task_id>", methods=["PUT"])
 def update_task(task_id):
     data = request.json
-    username = data.get("username")
 
     # task belongs to the user making the request
-    task = Task.query.filter_by(id=task_id, user=username).first()
-
+    task = Task.query.filter_by(id=task_id).first()
+    username = task.user
     if not data.get("name"):
         return jsonify({"error": "Task name is required."}), 400
     if not data.get("due_time"):
@@ -233,7 +324,7 @@ def update_task(task_id):
     task.due_time = data.get("due_time", task.due_time)
     task.priority = data.get("priority", task.priority)
     task.color_tag = data.get("color_tag", task.color_tag)
-    task.status = data.get("status", task.status)
+
     if "time_logs" in data:
         task.set_time_logs(data["time_logs"])
     task.start_date = start_date
@@ -241,10 +332,33 @@ def update_task(task_id):
     if "subtasks" in data:
         task.set_subtasks(data["subtasks"])
 
+    new_status = data.get("status", task.status)
+    task.status = new_status
+
+    if new_status == "Completed":
+        completion_date = data.get("completion_date", datetime.today().strftime("%Y-%m-%d"))
+        task.completion_date = completion_date
+
+        try:
+            due_date = datetime.strptime(task.due_time, "%Y-%m-%d").date()
+            comp_date = datetime.strptime(completion_date, "%Y-%m-%d").date()
+            if comp_date > due_date:
+                warning_msg = "This completion will not count toward your streak since it is after the due date."
+            else:
+                warning_msg = None
+        except ValueError:
+            warning_msg = None
+    else:
+        task.completion_date = None
+        warning_msg = None
+
+    task.status = new_status
     db.session.commit()
+    rebuild_streak(username)
 
     return jsonify({
         "message": "Task updated successfully!",
+        "warning": warning_msg,
         "task": {
             "id": task.id,
             "user": task.user,
@@ -270,6 +384,26 @@ def start_task_now(task_id):
     db.session.commit()
 
     return jsonify({"message": "Task started immediately!"}), 200
+
+@app.route("/tasks/<int:task_id>", methods=["GET"])
+def get_single_task(task_id):
+    task = Task.query.get(task_id)
+    if not task:
+        return jsonify({"error": "Task not found"}), 404
+    return jsonify({
+        "id": task.id,
+        "user": task.user,
+        "name": task.name,
+        "description": task.description,
+        "due_time": task.due_time,
+        "priority": task.priority,
+        "color_tag": task.color_tag,
+        "status": task.status,
+        "start_date": task.start_date,
+        "time_logs": task.get_time_logs(),
+        "subtasks": task.get_subtasks()
+    }), 200
+
 
 @app.route("/tasks/<int:task_id>/log_time", methods=["POST"])
 def log_time(task_id):
@@ -344,6 +478,8 @@ def time_summary():
     total = sum(task.get_total_time_spent() for task in tasks)
     return jsonify({"total_time_spent": total})
 
+with app.app_context():
+       db.create_all()
 
 
 # LOGIN.PY ------------------------------------
@@ -593,6 +729,7 @@ def update_profile():
     else:
         return jsonify({'error': 'User not found'}), 404
 
+
 # SETTINGS.PY ------------------------------------
 
 class UserSettings(db.Model):
@@ -645,6 +782,33 @@ def update_settings(user_id):
 
     db.session.commit()
     return jsonify({"message": "Settings updated successfully"}), 200
+
+
+# STREAK.PY ------------------------------------
+class UserStreak(db.Model):
+    username = db.Column(db.String(64), primary_key=True)
+    current_streak = db.Column(db.Integer, default=0)
+    highest_streak = db.Column(db.Integer, default=0)
+    total_days = db.Column(db.Integer, default=0)
+    history = db.Column(db.Text, default="[]")  # [{"date": "YYYY-MM-DD", "completed": true}]
+
+with app.app_context():
+    db.create_all()
+
+
+@app.route("/streak", methods=["GET"])
+def get_streak():
+    rebuild_streak(currentUser)  # <- Force refresh
+    streak = UserStreak.query.filter_by(username=currentUser).first()
+    if not streak:
+        return jsonify({"current_streak": 0, "highest_streak": 0, "total_days": 0, "history": []})
+    return jsonify({
+        "current_streak": streak.current_streak,
+        "highest_streak": streak.highest_streak,
+        "total_days": streak.total_days,
+        "history": json.loads(streak.history)
+    })
+
 
 
 if __name__ == "__main__":
