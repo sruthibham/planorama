@@ -3,7 +3,7 @@ import ProfilePage from './ProfilePage';
 import SettingsPage from './SettingsPage';
 import TaskDependenciesPage from './TaskDependenciesPage';
 import { BrowserRouter as Router, Routes, Route, useNavigate, useParams } from 'react-router-dom';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, createContext, useContext } from 'react';
 import { GlobalProvider, useGlobal } from "./GlobalContext";
 import { IoSettingsOutline } from "react-icons/io5";
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
@@ -79,10 +79,49 @@ function DisplayUsername() {
   )
 }
 
+/*
+
+const TasksContext = createContext();
+
+export function TasksProvider({ children }) {
+  const [tasks, setTasks] = useState([]);
+  const [archivedTasks, setArchivedTasks] = useState([]);
+
+  const archiveTask = (taskId) => {
+    const taskToArchive = tasks.find((task) => task.id === taskId);
+
+    if (taskToArchive) {
+      const updatedTasks = tasks.filter((task) => task.id !== taskId);
+
+      setArchivedTasks((prevArchivedTasks) => [
+        ...prevArchivedTasks,
+        taskToArchive,
+      ]);
+
+      setTasks(updatedTasks);
+    }
+  };
+
+  return (
+    <TasksContext.Provider value={{ tasks, setTasks, archivedTasks, setArchivedTasks, archiveTask}}>
+      {children}
+    </TasksContext.Provider>
+  )
+}
+
+*/
+
+//const useTasks = () => useContext(TasksContext);
+
 function TaskPage() {
   const {user} = useGlobal();
   const [ loggedIn, setLoggedIn ] = useState(false);
+  //const {tasks, setTasks} = useTasks();
+  //const {archivedTasks, setArchivedTasks} = useTasks();
   const [tasks, setTasks] = useState([]);
+  const [archivedTasks, setArchivedTasks] = useState([]); //for the archived tasks
+  const [showArchived, setShowArchived] = useState(false);
+  const [showArchiveModal, setShowArchiveModal] = useState(false);
   const [scheduledTasks, setScheduledTasks] = useState([]);
   const [showModal, setShowModal] = useState(false);
   const [newSubtaskName, setNewSubtaskName] = useState("");
@@ -269,23 +308,71 @@ function TaskPage() {
     
   };  
 
-  const checkComplete = (taskId) => {
-    
+  const closeArchiveModal = () => {
+    setShowArchiveModal(false);
+  }
+
+  const archiveTask = (taskId) => {
+    const taskToArchive = tasks.find((task) => task.id === taskId);
+
+    if (taskToArchive) {
+      const updatedTasks = tasks.filter((task) => task.id !== taskId);
+
+      setArchivedTasks((prevArchivedTasks) => [
+        ...prevArchivedTasks,
+        taskToArchive,
+      ]);
+
+      setTasks(updatedTasks);
+    }
   };
+
+  const unarchiveTask = (taskId) => {
+    const taskToUnarchive = archivedTasks.find((task) => task.id === taskId);
+
+    if (taskToUnarchive) {
+      const updatedTasks = archivedTasks.filter((task) => task.id !== taskId);
+
+      setTasks((prevTasks) => [
+        ...prevTasks,
+        taskToUnarchive,
+      ]);
+
+      setArchivedTasks(updatedTasks);
+    }
+  }
+
+  //for the colors before they were marked completed
+  const[originalColors, setOriginalColors] = useState(new Map());
 
   //jack
   //mark as complete check mark
   const markComplete = (taskId) => {
 
-    return (
-      <div>
-        <input
-          type="checkbox"
-          onChange={()=> checkComplete(taskId)}
-        />
-      </div>
-    )
-  }
+    setTasks((prevTasks) =>
+      prevTasks.map((task) => {
+        if (task.id === taskId) {
+          if (!task.completed) {
+            setOriginalColors((prev) => prev.set(task.id, task.color_tag));
+            return {
+              ...task,
+              completed: true, 
+              color_tag: "#90EE90",
+            };
+          } else {
+
+            const originalColor = originalColors.get(task.id);
+            return {
+              ...task,
+              completed: false, 
+              color_tag: originalColor,
+            };
+          }
+        }
+        return task;
+      })
+    );
+  };
 
   const handleChange = (e) => {
     if (editingTask) {
@@ -592,7 +679,24 @@ function TaskPage() {
                               : "none",
                           }}
                         >
-                          <div className="TaskCell">{markComplete(task.id)}</div>
+                          <div className="TaskCell">
+                            <input
+                              type="checkbox"
+                              checked={task.completed}
+                              onChange={() => markComplete(task.id)}
+                            />
+                            {task.completed && (
+                              <button
+                                className="ArchiveButton"
+                                onClick={() => archiveTask(task.id)}
+                              >
+                                Archive
+                              </button>
+                            )}
+                            {task.complete ? (
+                              <button onClick={() => alert("Task Completed!")}>Completed</button>
+                            ) : null}
+                          </div>
                           <div className="Task"></div>
                           <div className="Task"></div>
                           <div className="TaskCell">{task.name}</div>
@@ -679,7 +783,34 @@ function TaskPage() {
 
       { loggedIn &&
         <button className="MakeTaskButton" onClick={() => setShowModal(true)}>Create Task</button>
-      }
+      } 
+      {loggedIn && (
+        <>
+        <button className="ArchiveButton" onClick={() => setShowArchiveModal(true)}>All Archived</button>
+        {showArchiveModal && (
+          <div className="Modal">
+            <div className="ArchiveModal">
+              <button onClick={closeArchiveModal} className="CloseArchiveButton">Close</button>
+              <h3>Archived Tasks</h3>
+              {archivedTasks.length > 0 ? (
+                archivedTasks.map((task) => (
+                  <div key={task.id} className="ArchivedTask">
+                    <input
+                      type="checkbox"
+                      checked={!task.completed}
+                      onChange={() => unarchiveTask(task.id)}
+                    />
+                    {task.name}
+                  </div>
+                ))
+              ) : (
+                <p>No archived tasks.</p>
+              )}
+            </div>
+          </div>
+        )}
+        </>
+      )}
       { !loggedIn &&
         <h3 style={{textAlign: "center"}}>Log in to start making tasks!</h3>
       } 
@@ -1772,7 +1903,28 @@ function Notes() {
 }
 
 function ArchivePage() {
-
+  
+  return (
+    <div>
+      <h1>Archived Tasks</h1>
+      {/*
+      {archivedTasks.length === 0 ? (
+        <p>No tasks archived.</p>
+      ) : (
+        <div className="TaskList">
+          {archivedTasks.map((task) => (
+            <div key={task.id} className="TaskRow">
+              <div className="TaskCell">{task.name}</div>
+              <div className="TaskCell">{task.status}</div>
+              <div className="TaskCell">{task.priority}</div>
+              <div className="TaskCell">{task.due_time}</div>
+            </div>
+          ))}
+        </div>
+      )}
+      */}
+    </div>
+  );
 }
 
 function NavigationButtons() {

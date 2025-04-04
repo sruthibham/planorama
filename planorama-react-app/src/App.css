@@ -26,6 +26,16 @@ body {
   align-items: center;
 }
 
+.ArchiveModal {
+  background-color: white;
+  padding: 20px;
+  border-radius: 8px;
+  max-height: 200px;
+  overflow-y: auto;
+  width: 90%;
+  max-width: 400px;
+}
+
 .modal {
   width: 50%;
   max-width: 500px;
@@ -183,6 +193,34 @@ body {
 
 .NotesButton:hover {
   background-color: #1899c0;
+}
+
+.ArchiveButton {
+  padding: 5px 5px;
+  border: none;
+  background-color: #525251;
+  color: white;
+  cursor: pointer;
+  border-radius: 5px;
+  margin: 5px;
+}
+
+.ArchiveButton:hover {
+  background-color: #232322;
+}
+
+.CloseArchiveButton {
+  padding: 5px 5px;
+  border: none;
+  background-color: #525251;
+  color: white;
+  cursor: pointer;
+  border-radius: 5px;
+  margin: 5px;
+}
+
+.CloseArchiveButton:hover {
+  background-color: #232322;
 }
 
 .MakeTaskButton {
