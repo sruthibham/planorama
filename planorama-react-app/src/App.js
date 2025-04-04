@@ -243,6 +243,168 @@ function TaskLogModal({
 
 
 
+function TaskTimeCell({ task, onLogClick }) {
+  const total = (task.time_logs || []).reduce((sum, log) => sum + (log.minutes || 0), 0);
+  return (
+    <div className="TaskCell">
+      <div><strong>{total} min</strong></div>
+      <button
+        className="SubtaskButton SubtaskConfirmButton"
+        onClick={onLogClick}
+        style={{ marginTop: "4px" }}
+      >
+        Log Time
+      </button>
+    </div>
+  );
+}
+
+function TaskLogModal({
+  task,
+  onClose,
+  onLogTime,
+  onDeleteLog,
+  logs,
+  logInput,
+  setLogInput,
+  errorMsg,
+  setTasks,
+  setSelectedTaskLogs
+}) {
+  const [editingLogId, setEditingLogId] = useState(null);
+  const [editLogMinutes, setEditLogMinutes] = useState("");
+
+  const handleEditLog = (logId) => {
+    const minutes = parseInt(editLogMinutes);
+    if (isNaN(minutes) || minutes <= 0 || minutes > 1440) {
+      alert("Please enter a time between 1 and 1440 minutes.");
+      return;
+    }
+
+    axios
+      .put(`http://127.0.0.1:5000/tasks/${task.id}/log_time/${logId}`, { minutes })
+      .then((res) => {
+        const updatedLogs = res.data.logs;
+        setSelectedTaskLogs(updatedLogs);
+        setTasks((prev) =>
+          prev.map((t) =>
+            t.id === task.id ? { ...t, time_logs: updatedLogs } : t
+          )
+        );
+        setEditingLogId(null);
+        setEditLogMinutes("");
+      })
+      .catch((err) => console.error(err));
+  };
+
+  return (
+    <div className="modal-overlay" onMouseDown={onClose}>
+      <div className="modal" onMouseDown={(e) => e.stopPropagation()}>
+        <h2>Log Time for {task.name}</h2>
+
+        {logs.map((log) => (
+          <div key={log.id} className="TimeLogEntry">
+            {editingLogId === log.id ? (
+              <>
+                <input
+                  type="number"
+                  value={editLogMinutes}
+                  onChange={(e) => setEditLogMinutes(e.target.value)}
+                  className="TextFields"
+                  style={{ width: "70px" }}
+                />
+                <button onClick={() => handleEditLog(log.id)}>Save</button>
+                <button onClick={() => setEditingLogId(null)}>Cancel</button>
+              </>
+            ) : (
+              <>
+                <span>{log.minutes} min - {log.timestamp}</span>
+                <button
+                  className="EditButton"
+                  onClick={() => {
+                    setEditingLogId(log.id);
+                    setEditLogMinutes(log.minutes);
+                  }}
+                >
+                  Edit
+                </button>
+                <button
+                  className="DeleteButton"
+                  onClick={() => {
+                    axios
+                      .delete(`http://127.0.0.1:5000/tasks/${task.id}/log_time/${log.id}`)
+                      .then((res) => {
+                        const updatedLogs = res.data.logs;
+                        setSelectedTaskLogs(updatedLogs);
+                        setTasks((prev) =>
+                          prev.map((t) =>
+                            t.id === task.id ? { ...t, time_logs: updatedLogs } : t
+                          )
+                        );
+                      })
+                      .catch((err) => console.error(err));
+                  }}
+                >
+                  Delete
+                </button>
+              </>
+            )}
+          </div>
+        ))}
+
+        <div style={{ display: "flex", gap: "10px", alignItems: "center", marginTop: "10px" }}>
+          <input
+            type="number"
+            placeholder="Minutes"
+            value={logInput}
+            onChange={(e) => setLogInput(e.target.value)}
+            className="TextFields"
+          />
+          <button
+            className="SubtaskButton SubtaskConfirmButton"
+            onClick={() => {
+              const minutes = parseInt(logInput);
+              if (isNaN(minutes) || minutes <= 0 || minutes > 1440) {
+                alert("Please enter a time between 1 and 1440 minutes.");
+                return;
+              }
+
+              axios
+                .post(`http://127.0.0.1:5000/tasks/${task.id}/log_time`, { minutes })
+                .then((res) => {
+                  const updatedLogs = res.data.logs;
+                  setSelectedTaskLogs(updatedLogs);
+                  setLogInput("");
+                  setTasks((prev) =>
+                    prev.map((t) =>
+                      t.id === task.id ? { ...t, time_logs: updatedLogs } : t
+                    )
+                  );
+                })
+                .catch((err) => console.error(err));
+            }}
+            style={{ backgroundColor: "#66dd66", color: "#fff", padding: "5px 10px" }}
+          >
+            Log Time
+          </button>
+        </div>
+
+        {errorMsg && <p className="ErrorMessage">{errorMsg}</p>}
+
+        <button
+          className="Buttons"
+          onClick={onClose}
+          style={{ marginTop: "20px" }}
+        >
+          Close
+        </button>
+      </div>
+    </div>
+  );
+}
+
+
+
 function TaskPage() {
   const {user} = useGlobal();
   const [ loggedIn, setLoggedIn ] = useState(false);
@@ -715,6 +877,16 @@ function TaskPage() {
           </div>
         )}
 
+        {taskWarning && (
+          <div className="modal-overlay" onMouseDown={() => setTaskWarning("")}>
+            <div className="modal" onMouseDown={(e) => e.stopPropagation()}>
+              <h3>⚠️ Heads up!</h3>
+              <p>{taskWarning}</p>
+              <button className="Buttons" onClick={() => setTaskWarning("")}>Got it</button>
+            </div>
+          </div>
+        )}
+
         {tasks.length === 0 ? (
           <div>No tasks available.</div>
         ) : filteredTasks.length === 0 ? (
@@ -925,6 +1097,19 @@ function TaskPage() {
           <p>{taskWarning}</p>
           <button onClick={() => setTaskWarning("")} className="CloseWarningButton">✖</button>
           </div>)}
+      
+      {logModalTask && (
+        <TaskLogModal
+          task={logModalTask}
+          logs={selectedTaskLogs}
+          logInput={timeLogInput}
+          setLogInput={setTimeLogInput}
+          errorMsg={timeLogError}
+          onClose={() => setLogModalTask(null)}
+          setTasks={setTasks} 
+          setSelectedTaskLogs={setSelectedTaskLogs}
+        />
+      )}
       
       {logModalTask && (
         <TaskLogModal
