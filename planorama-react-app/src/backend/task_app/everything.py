@@ -12,7 +12,6 @@ import time
 
 app = Flask(__name__)
 CORS(app)
-
 # Update current user whenever refreshed
 path = os.path.join(os.path.dirname(os.path.abspath(__file__)),"currentUser.txt")
 word = open(path).read()
@@ -47,6 +46,17 @@ class Task(db.Model):
     subtasks = db.Column(db.Text, default="[]", nullable=True)
     start_date = db.Column(db.String(50), nullable=True)  # New Field
     time_logs = db.Column(db.Text, default="[]", nullable=True)
+    order_index = db.Column(db.Integer, nullable=False, default=0)
+    dependencies = db.Column(db.Text, default="[]")
+
+    def get_dependencies(self):
+        try:
+            return json.loads(self.dependencies) if self.dependencies else []
+        except json.JSONDecodeError:
+            return []
+
+    def set_dependencies(self, deps_list):
+        self.dependencies = json.dumps(deps_list)
 
     def get_subtasks(self):
         try:
@@ -77,7 +87,8 @@ with app.app_context():
 def get_tasks():
     global currentUser
     tasks = Task.query.filter(Task.user == currentUser, 
-                              (Task.start_date == None) | (Task.start_date <= datetime.today().strftime("%Y-%m-%d"))).all()
+                              (Task.start_date == None) | (Task.start_date <= datetime.today().strftime("%Y-%m-%d")))\
+                        .order_by(Task.order_index).all()
     usersTasks = []
     # for task in tasks:
     #     if (task.user == currentUser):
@@ -93,7 +104,9 @@ def get_tasks():
         "status": task.status,
         "start_date": task.start_date,
         "time_logs": task.get_time_logs(),
-        "subtasks": task.get_subtasks()
+        "subtasks": task.get_subtasks(),
+        "order_index": task.order_index,
+        "dependencies": task.get_dependencies()
     } for task in tasks])
 
 # Retrieve SCHEDULED tasks
@@ -112,7 +125,9 @@ def get_scheduled_tasks():
         "status": task.status,
         "start_date": task.start_date,
         "time_logs": task.get_time_logs(),
-        "subtasks": task.get_subtasks()
+        "subtasks": task.get_subtasks(),
+        "order_index": task.order_index,
+        "dependencies": task.get_dependencies()
     } for task in tasks])
 
 @app.route("/tasks", methods=["POST"])
@@ -151,6 +166,12 @@ def add_task():
 
     subtasks = data.get("subtasks", [])
 
+    max_index = db.session.query(db.func.max(Task.order_index)).filter_by(user=data["username"]).scalar()
+    if max_index is None:
+        max_index = 0
+    else:
+        max_index += 1
+
     new_task = Task(
         user=data["username"],
         name=data["name"],
@@ -159,9 +180,14 @@ def add_task():
         priority=data["priority"],
         color_tag=data.get("color_tag"),
         status=data.get("status", "To-Do"),
-        start_date=start_date
+        start_date=start_date,
+        order_index=max_index
     )
     new_task.set_subtasks(subtasks)
+
+    dependencies = data.get("dependencies", [])
+    new_task.set_dependencies(dependencies)
+
 
     db.session.add(new_task)
     db.session.commit()
@@ -176,8 +202,23 @@ def add_task():
         "status": new_task.status,
         "start_date": new_task.start_date,
         "time_logs": new_task.get_time_logs(), 
-        "subtasks": new_task.get_subtasks()
+        "subtasks": new_task.get_subtasks(),
+        "order_index": new_task.order_index,
+        "dependencies": new_task.get_dependencies()
     }}), 201
+
+@app.route("/tasks/reorder", methods=["POST"])
+def reorder_tasks():
+    data = request.json  # Expects list of task IDs in new order
+    if not isinstance(data, list):
+        return jsonify({"error": "Invalid data format"}), 400
+
+    for index, task_id in enumerate(data):
+        task = Task.query.get(task_id)
+        if task and task.user == currentUser:
+            task.order_index = index
+    db.session.commit()
+    return jsonify({"message": "Task order updated"}), 200
 
 # Move scheduled tasks to active at midnight
 def auto_move_tasks():
@@ -188,7 +229,7 @@ def auto_move_tasks():
             for task in tasks:
                 task.start_date = None  # Move to active
             db.session.commit()
-        time.sleep(86400)  # Run every 24 hours
+        time.sleep(86400) # Run every 24 hours
 # Start the background thread
 threading.Thread(target=auto_move_tasks, daemon=True).start()
 
@@ -197,7 +238,13 @@ def delete_task(task_id):
     task = Task.query.get(task_id)
     if not task:
         return jsonify({"error": "Task not found"}), 404
-
+    dependencies = Task.query.filter(Task.dependencies.contains(task_id)).all()
+    if dependencies:
+        return jsonify({
+            "error": f"Task cannot be deleted because it is a dependency for other tasks.",
+            "blocking_tasks": [t.name for t in dependencies]
+        }), 400
+    
     db.session.delete(task)  # Remove task from database
     db.session.commit()  # Save changes
     return jsonify({"message": "Task deleted successfully"}), 200
@@ -205,11 +252,15 @@ def delete_task(task_id):
 @app.route("/tasks/<int:task_id>", methods=["PUT"])
 def update_task(task_id):
     data = request.json
+    task = Task.query.get(task_id)
+
+    if not task:
+        return jsonify({"error": "Task not found."}), 404
+
     username = data.get("username")
-
-    # task belongs to the user making the request
-    task = Task.query.filter_by(id=task_id, user=username).first()
-
+    if task.user != username:
+        return jsonify({"error": "You don't have permission to edit this task"}), 403
+    
     if not data.get("name"):
         return jsonify({"error": "Task name is required."}), 400
     if not data.get("due_time"):
@@ -237,9 +288,16 @@ def update_task(task_id):
     if "time_logs" in data:
         task.set_time_logs(data["time_logs"])
     task.start_date = start_date
-
     if "subtasks" in data:
         task.set_subtasks(data["subtasks"])
+    if "dependencies" in data:
+        task.set_dependencies(data["dependencies"])
+    
+    if data.get("status") == "Completed":
+        for dep_id in task.get_dependencies():
+            dep_task = Task.query.get(dep_id)
+            if dep_task and dep_task.status != "Completed":
+                return jsonify({"error": "Cannot mark task as completed. Complete all dependencies first."}), 400
 
     db.session.commit()
 
@@ -256,9 +314,49 @@ def update_task(task_id):
             "status": task.status,
             "start_date": task.start_date,
             "time_logs": task.get_time_logs(), 
-            "subtasks": task.get_subtasks()
+            "subtasks": task.get_subtasks(),
+            "dependencies": task.get_dependencies()
         }
     }), 200
+
+@app.route("/tasks/<int:task_id>/subtasks/<int:subtask_id>", methods=["PUT"])
+def update_subtask(task_id, subtask_id):
+    task = Task.query.get(task_id)
+    if not task:
+        return jsonify({"error": "Task not found"}), 404
+
+    data = request.json
+    completed = data.get("completed", False)
+
+    subtasks = task.get_subtasks()
+    found = False
+    for subtask in subtasks:
+        if subtask["id"] == subtask_id:
+            subtask["completed"] = completed
+            found = True
+            break
+
+    if not found:
+        return jsonify({"error": "Subtask not found"}), 404
+
+    task.set_subtasks(subtasks)
+
+    # Auto-update task status based on subtask completion
+    if all(sub["completed"] for sub in subtasks):
+        task.status = "Completed"
+    elif any(sub["completed"] for sub in subtasks):
+        task.status = "In Progress"
+    else:
+        task.status = "To-Do"
+
+    db.session.commit()
+
+    return jsonify({
+        "message": "Subtask updated",
+        "subtasks": subtasks,
+        "status": task.status
+    }), 200
+
 # Start task immediately (move to active)
 @app.route("/tasks/<int:task_id>/start_now", methods=["PUT"])
 def start_task_now(task_id):
@@ -346,6 +444,65 @@ def time_summary():
 
 
 
+# Templates ------
+
+'''
+class Template(db.Model):
+    user = db.Column(db.String(32), nullable=False)
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(200), nullable=False)
+    description = db.Column(db.Text, nullable=True)
+    due_time = db.Column(db.String(50), nullable=False)
+    priority = db.Column(db.String(20), nullable=False)
+    color_tag = db.Column(db.String(20), nullable=True)
+    status = db.Column(db.String(20), default="To-Do")
+    subtasks = db.Column(db.Text, default="[]", nullable=True)
+    start_date = db.Column(db.String(50), nullable=True)  # New Field
+    time_logs = db.Column(db.Text, default="[]", nullable=True)
+    order_index = db.Column(db.Integer, nullable=False, default=0)
+    dependencies = db.Column(db.Text, default="[]")
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "username": self.username,
+            "name": self.name,
+            "description": self.description,
+            "due_time": self.due_time,
+            "priority": self.priority,
+            "color_tag": self.color_tag,
+            "status": self.status,
+            "start_date": self.start_date,
+            "time_log": self.time_log,
+            "subtasks": self.subtasks
+        }
+
+@app.route("/templates", methods=["POST"])
+def create_task_template():
+    data = request.json
+    new_template = TaskTemplate(
+        username=data.get('username', 'defaultUser'),
+        name=data['name'],
+        description=data.get('description', ''),
+        due_time=data.get('due_time', ''),
+        priority=data['priority'],
+        color_tag=data.get('color_tag', ''),
+        status=data['status'],
+        start_date=data.get('start_date', ''),
+        time_log=data.get('time_log', ''),
+        subtasks=data.get('subtasks', '[]')
+    )
+
+    db.session.add(new_template)
+    db.session.commit()
+
+    return jsonify({"message": "Task template made", "template": new_template.to_dict()}), 201
+
+@app.route("/tasks", methods=["GET"])
+def get_task_templates():
+    templates = TaskTemplate.query.all()
+    return jsonify([template.to_dict() for template in templates])
+'''
 # LOGIN.PY ------------------------------------
 
 # Database containing user's credentials
@@ -364,7 +521,14 @@ with app.app_context():
     if not UserLogin.query.filter_by(username="admin").first():
         admin = UserLogin(username="admin", email="email", pwd="pass")
         db.session.add(admin)
+        admin = UserLogin(username="admin1", email="email", pwd="pass")
+        db.session.add(admin)
+        admin = UserLogin(username="admin2", email="email", pwd="pass")
+        db.session.add(admin)
+        admin = UserLogin(username="admin3", email="email", pwd="pass")
+        db.session.add(admin)
         db.session.commit()
+
 
 
 '''
@@ -645,6 +809,193 @@ def update_settings(user_id):
 
     db.session.commit()
     return jsonify({"message": "Settings updated successfully"}), 200
+
+
+# TEAMS ------------------------------------------------
+class Teams(db.Model):
+    teamID = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    teamName = db.Column(db.String(64), nullable=False)
+    owner = db.Column(db.String(64), nullable=False)
+    members = db.Column(db.Text, nullable=True)
+    recipients = db.Column(db.Text, nullable=True)
+
+    def get_members(self):
+        return json.loads(self.members) if self.members else []
+
+    def add_member(self, username):
+        members = self.get_members()
+        if username not in members:
+            members.append(username)
+            self.members = json.dumps(members)
+            db.session.commit()
+
+    def remove_member(self, username):
+        members = self.get_members()
+        if username in members:
+            members.remove(username)
+            self.members = json.dumps(members) if members else None  
+            db.session.commit()
+
+    def get_recipients(self):
+        return json.loads(self.recipients) if self.recipients else []
+
+    def add_recipient(self, username):
+        recipients = self.get_recipients()
+        if username not in recipients:
+            recipients.append(username)
+            self.recipients = json.dumps(recipients)
+            db.session.commit()
+
+    def remove_recipient(self, username):
+        recipients = self.get_recipients()
+        if username in recipients:
+            recipients.remove(username)
+            self.recipients = json.dumps(recipients) if recipients else None
+            db.session.commit()
+
+with app.app_context():
+    db.create_all()
+
+# Create a team based on a name, with only member being the creator
+@app.route("/createteam", methods=["POST"])
+def createTeam():
+    data = request.json
+    new_team = Teams(
+        teamName=data.get("teamName"), 
+        owner=currentUser, 
+        members=json.dumps([currentUser]),
+        recipients=json.dumps([])
+    )
+    
+    db.session.add(new_team)
+    db.session.commit()
+    return jsonify(data)
+
+# Get all teams for a certain user
+@app.route("/getteams", methods=["GET"])
+def getTeams():
+    global currentUser
+    teams = Teams.query.all()
+    user_teams = [team for team in teams if currentUser in team.get_members()]
+
+    return jsonify([{
+        "teamID": team.teamID,
+        "teamName": team.teamName,
+        "owner": team.owner,
+        "members": team.get_members(),
+        "recipients": team.get_recipients()
+    } for team in user_teams])
+
+# Get all teams that user has an invite to
+@app.route("/getinvites", methods=["GET"])
+def getInvites():
+    global currentUser
+    teams = Teams.query.all()
+    user_invites = [team for team in teams if currentUser in team.get_recipients()]
+
+    return jsonify([{
+        "teamID": team.teamID,
+        "teamName": team.teamName,
+        "owner": team.owner,
+        "members": team.get_members(),
+        "recipients": team.get_recipients()
+    } for team in user_invites])
+
+# Get the information of a team based on ID
+@app.route("/getteam", methods=["GET"])
+def getTeamFromID():
+    teamID = request.args.get("teamID")
+    team = Teams.query.get(teamID)
+
+    return jsonify({
+        "teamID": team.teamID,
+        "teamName": team.teamName,
+        "owner": team.owner,
+        "members": team.get_members(),
+        "recipients": team.get_recipients()
+    })
+
+# Get profile information based on username
+@app.route("/getprof", methods=["GET"])
+def getProf():
+    usern = request.args.get("usern")
+    user = User.query.filter_by(username=usern).first()
+
+    return jsonify({
+        "id": user.id,
+        "username": user.username,
+        "profile_picture": user.profile_picture,
+        "achievements": user.achievements
+    })
+
+# Delete a team from database
+@app.route("/deleteteam", methods=["POST"])
+def delTeam():
+    data = request.json
+    team = Teams.query.get(data["teamID"])
+    db.session.delete(team)
+    db.session.commit()
+    return jsonify(data)
+
+# Return users matching search
+@app.route("/search", methods=["POST"])
+def searchUsers():
+    data = request.json
+    query = data.get("query")
+    if (query==''):
+        return jsonify([])
+    users = UserLogin.query.filter(UserLogin.username.ilike(f"%{query}%"), UserLogin.username != currentUser).all()
+    users = users[:15]
+    usernames = [user.username for user in users]
+    return jsonify(usernames)
+
+# Adds user to recipients
+@app.route("/sendinvite", methods=["POST"])
+def sendInv():
+    data = request.json
+    team_id = data.get("teamID")
+    username = data.get("recipient")
+
+    team = Teams.query.get(team_id)
+
+    recipients = team.get_recipients()
+
+    if username in recipients:
+        return jsonify({"message": f"{username} is already invited."})
+
+    team.add_recipient(username)
+    print("Invites to: ",team.get_recipients())
+
+    return jsonify({"message": f"{username} invited to team {team.teamName}."})
+
+
+# Adds user to members
+@app.route("/jointeam", methods=["POST"])
+def joinTeam():
+    data = request.json
+    team_id = data.get("teamID")
+    team = Teams.query.get(team_id)
+    team.add_member(currentUser)
+    return jsonify(data)
+
+
+# Remove user from recipients
+@app.route("/denyinvite", methods=["POST"])
+def denyInv():
+    data = request.json
+    team_id = data.get("teamID")
+    team = Teams.query.get(team_id)
+    team.remove_recipient(currentUser)
+    return jsonify(data)
+
+# Remove user from members
+@app.route("/leaveteam", methods=["POST"])
+def leaveTeam():
+    data = request.json
+    team_id = data.get("teamID")
+    team = Teams.query.get(team_id)
+    team.remove_member(currentUser)
+    return jsonify(data)
 
 
 if __name__ == "__main__":

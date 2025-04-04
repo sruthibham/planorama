@@ -55,7 +55,7 @@ body {
 
 .TaskRow {
   display: grid;
-  grid-template-columns: 0.25fr 0.75fr 1fr 1fr 1fr 1fr 1fr 1fr; /* Filter, Color, Task, Priority, Status, Deadline, Make Changes */
+  grid-template-columns: 1fr 0.25fr 0.75fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr; /* Mark as Complete, Filter, Color, Task, Priority, Status, Deadline, Make Changes, notes */
   align-items: center;
   padding: 10px;
   border-bottom: 1px solid #ccc;
@@ -127,6 +127,62 @@ body {
 
 .UndoButton:hover {
   background-color: #2b44c0;
+}
+
+.BoldButton {
+  padding: 5px 5px;
+  border: none;
+  background-color: #92b1fb;
+  color: white;
+  cursor: pointer;
+  border-radius: 5px;
+  margin: 5px;
+}
+
+.BoldButton:hover {
+  background-color: #7087f7;
+}
+
+.BulletButton {
+  padding: 5px 5px;
+  border: none;
+  background-color: #92fba0;
+  color: white;
+  cursor: pointer;
+  border-radius: 5px;
+  margin: 5px;
+}
+
+.BulletButton:hover {
+  background-color: #70f792;
+}
+
+.ItalicsButton {
+  padding: 5px 5px;
+  border: none;
+  background-color: #fbdd92;
+  color: white;
+  cursor: pointer;
+  border-radius: 5px;
+  margin: 5px;
+}
+
+.ItalicsButton:hover {
+  background-color: #f7c170;
+}
+
+.NotesButton {
+  padding: 5px 10px;
+  border: none;
+  background-color: #60a5ca;
+  color: white;
+  cursor: pointer;
+  border-radius: 5px;
+  margin: 5px;
+}
+
+.NotesButton:hover {
+  background-color: #1899c0;
 }
 
 .MakeTaskButton {
@@ -553,6 +609,120 @@ button:hover {
   background-color: #555;
 }
 
+.Headers {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 90%;
+  margin: 0 auto;
+}
+
+.TeamContainer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 20px;
+  width: 90%;
+  margin: 0 auto;
+}
+
+.Container {
+  position: relative;
+  display: inline-block;
+}
+.ButtonContainer {
+  position: absolute;
+  bottom: -10px;
+  right: -10px;
+  display: flex;
+  gap: 5px; 
+}
+
+.MemberList {
+  display: flex;
+  flex-direction: column;
+  width: 90%;
+  margin: auto;
+}
+
+.MemberList h4 {
+  margin: 0;
+  padding: 0;
+}
+
+.MemberList ul {
+  margin-top: 0px;
+  margin-bottom: 15px;
+}
+
+.MemberList li {
+  margin-top: 8px;
+  margin-bottom: 0px;
+}
+
+.AddMember {
+  display: flex;
+  width: 90%;
+  margin: auto;
+}
+
+.centered {
+  display: grid;
+  place-items: center; 
+}
+
+.user-row {
+  border-radius: 1;
+  width: 300px;
+  height: 24px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 4px;
+  border: 1px solid #d1d5db;
+  border-radius: 0px;
+}
+
+.SearchBar {
+  width: 300px;
+  height: 24px;
+  padding: 4px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  outline: none;
+}
+
+.Column {
+  display: flex;
+  flex-direction: column;
+  gap: 0px; 
+}
+
+.BotRight {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;     
+  width: 300px;
+  height: 300px;   
+  background-color: #f0f0f0; 
+  border: 1px solid #ccc;  
+  border-radius: 8px;
+  padding: 10px;
+}
+
+.Invite {
+  width: 50px;
+  height: 24px;
+  padding: 0;
+  font-size: 1rem;
+  background-color: #3b82f6;
+  color: white;
+  border: none;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  cursor: pointer;
+}
 
 /* --- Time Log Styling --- */
 .TimeLogSection {
