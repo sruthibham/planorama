@@ -1856,7 +1856,7 @@ const TeamPage = () => {
                 <div key={index} className='user-row'>
                   {username}
                   <div style={{ display: 'flex', gap: '2px'}}>
-                    {!team.recipients.includes(username) ? (
+                    {(!team.recipients.includes(username) && !team.members.includes(username)) ? (
                       <button className='Invite' onClick={() => handleInvite(username)}>Invite</button>
                     ) : null}
                     <button className='Invite' onClick={() => handleView(username)}>View</button>
