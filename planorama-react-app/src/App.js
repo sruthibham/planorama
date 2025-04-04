@@ -127,6 +127,9 @@ function TaskPage() {
     { name: "purple", value: "#c5bbde"}
   ];
 
+  const [isCheck, setIsCheck] = useState(false);
+  const [completedTasks, setCompletedTasks] = useState({});
+
   useEffect(() => {
     if (user !== "Guest") {
       setLoggedIn(true);
@@ -265,6 +268,24 @@ function TaskPage() {
     }
     
   };  
+
+  const checkComplete = (taskId) => {
+    
+  };
+
+  //jack
+  //mark as complete check mark
+  const markComplete = (taskId) => {
+
+    return (
+      <div>
+        <input
+          type="checkbox"
+          onChange={()=> checkComplete(taskId)}
+        />
+      </div>
+    )
+  }
 
   const handleChange = (e) => {
     if (editingTask) {
@@ -439,6 +460,10 @@ function TaskPage() {
     filteredTasks = filteredTasks.filter((task) => 
       task.color_tag === filterColor);
   }
+
+  const handleMarkComplete = () => {
+
+  }
   
   return (
     <div>
@@ -447,6 +472,9 @@ function TaskPage() {
       <h2>Active Tasks</h2>
       <div className="TaskTable">
         <div className="TaskRow TaskHeader">
+          <label>
+            Mark as complete:
+          </label>
           <label>
             Filter:  
           </label>
@@ -563,6 +591,7 @@ function TaskPage() {
                               : "none",
                           }}
                         >
+                          <div className="TaskCell">{markComplete(task.id)}</div>
                           <div className="Task"></div>
                           <div className="Task"></div>
                           <div className="TaskCell">{task.name}</div>
@@ -1614,19 +1643,6 @@ function TemplatesPage() {
           <div className="TaskCell">Dependencies</div>
           <div className="TaskCell">Make Changes</div>
         </div>
-
-        <div>
-          <ul>
-            {templates.map((template) => (
-              <li key={template.id}>
-                <strong>{template.name}</strong> - {template.priority} ({template.status})
-                <p>{template.description}</p>
-                <p>Due Date: {template.due_time}</p>
-                <p>Start Date: {template.start_date}</p>
-              </li>
-            ))}
-          </ul>
-        </div>
       </div>
 
       <div>
@@ -1713,6 +1729,10 @@ function TemplatesPage() {
   )
 }
 
+function ArchivePage() {
+
+}
+
 function NavigationButtons() {
   const navigate = useNavigate();
 
@@ -1730,6 +1750,7 @@ function NavigationButtons() {
       </button> */}
       <button className='Buttons' style={{marginLeft: 5}} onClick={() => navigate('/gensearch')}>Search</button>
       <button className='Buttons' style={{marginLeft: 5}} onClick={() => navigate('/templates')}>Templates</button>
+      <button className='Buttons' style={{marginLeft: 5}} onClick={() => navigate('/archive')}>Archive</button>
       <div className="SettingsButton" onClick={() => navigate('/settings')}> 
         <IoSettingsOutline />
       </div>
@@ -1754,6 +1775,7 @@ function App() {
             <Route path="/teams" element={<TeamsPage />} />
             <Route path="/team/:teamID" element={<TeamPage />} />
             <Route path="/templates" element={<TemplatesPage />} />
+            <Route path="/archive" element={<ArchivePage />} />
             <Route path="/gensearch" element={<SearchPage />} />
             <Route path="/dependencies" element={<TaskDependenciesPage />} />
           </Routes>
