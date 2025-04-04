@@ -644,10 +644,11 @@ class UserLogin(db.Model):
     username = db.Column(db.String(64), primary_key=True)
     email = db.Column(db.String(64), nullable=False)
     pwd = db.Column(db.String(64), nullable=False)
+    profile_pic = db.Column(db.String(128), nullable=True, default="static/profile_pics/default-profile.png")
+    achievements = db.Column(db.Text, default="[]")
 
 with app.app_context():
     db.create_all()
-
 
 #Login for quick testing
 with app.app_context():
@@ -804,7 +805,6 @@ def updateUser():
 
 
 # PROFILE.PY ---------------------
-
 app.config['UPLOAD_FOLDER'] = 'static/profile_pics'
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 

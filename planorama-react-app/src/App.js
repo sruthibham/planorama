@@ -81,167 +81,6 @@ function DisplayUsername() {
   )
 }
 
-function TaskTimeCell({ task, onLogClick }) {
-  const total = (task.time_logs || []).reduce((sum, log) => sum + (log.minutes || 0), 0);
-  return (
-    <div className="TaskCell">
-      <div><strong>{total} min</strong></div>
-      <button
-        className="SubtaskButton SubtaskConfirmButton"
-        onClick={onLogClick}
-        style={{ marginTop: "4px" }}
-      >
-        Log Time
-      </button>
-    </div>
-  );
-}
-
-function TaskLogModal({
-  task,
-  onClose,
-  onLogTime,
-  onDeleteLog,
-  logs,
-  logInput,
-  setLogInput,
-  errorMsg,
-  setTasks,
-  setSelectedTaskLogs
-}) {
-  const [editingLogId, setEditingLogId] = useState(null);
-  const [editLogMinutes, setEditLogMinutes] = useState("");
-
-  const handleEditLog = (logId) => {
-    const minutes = parseInt(editLogMinutes);
-    if (isNaN(minutes) || minutes <= 0 || minutes > 1440) {
-      alert("Please enter a time between 1 and 1440 minutes.");
-      return;
-    }
-
-    axios
-      .put(`http://127.0.0.1:5000/tasks/${task.id}/log_time/${logId}`, { minutes })
-      .then((res) => {
-        const updatedLogs = res.data.logs;
-        setSelectedTaskLogs(updatedLogs);
-        setTasks((prev) =>
-          prev.map((t) =>
-            t.id === task.id ? { ...t, time_logs: updatedLogs } : t
-          )
-        );
-        setEditingLogId(null);
-        setEditLogMinutes("");
-      })
-      .catch((err) => console.error(err));
-  };
-
-  return (
-    <div className="modal-overlay" onMouseDown={onClose}>
-      <div className="modal" onMouseDown={(e) => e.stopPropagation()}>
-        <h2>Log Time for {task.name}</h2>
-
-        {logs.map((log) => (
-          <div key={log.id} className="TimeLogEntry">
-            {editingLogId === log.id ? (
-              <>
-                <input
-                  type="number"
-                  value={editLogMinutes}
-                  onChange={(e) => setEditLogMinutes(e.target.value)}
-                  className="TextFields"
-                  style={{ width: "70px" }}
-                />
-                <button onClick={() => handleEditLog(log.id)}>Save</button>
-                <button onClick={() => setEditingLogId(null)}>Cancel</button>
-              </>
-            ) : (
-              <>
-                <span>{log.minutes} min - {log.timestamp}</span>
-                <button
-                  className="EditButton"
-                  onClick={() => {
-                    setEditingLogId(log.id);
-                    setEditLogMinutes(log.minutes);
-                  }}
-                >
-                  Edit
-                </button>
-                <button
-                  className="DeleteButton"
-                  onClick={() => {
-                    axios
-                      .delete(`http://127.0.0.1:5000/tasks/${task.id}/log_time/${log.id}`)
-                      .then((res) => {
-                        const updatedLogs = res.data.logs;
-                        setSelectedTaskLogs(updatedLogs);
-                        setTasks((prev) =>
-                          prev.map((t) =>
-                            t.id === task.id ? { ...t, time_logs: updatedLogs } : t
-                          )
-                        );
-                      })
-                      .catch((err) => console.error(err));
-                  }}
-                >
-                  Delete
-                </button>
-              </>
-            )}
-          </div>
-        ))}
-
-        <div style={{ display: "flex", gap: "10px", alignItems: "center", marginTop: "10px" }}>
-          <input
-            type="number"
-            placeholder="Minutes"
-            value={logInput}
-            onChange={(e) => setLogInput(e.target.value)}
-            className="TextFields"
-          />
-          <button
-            className="SubtaskButton SubtaskConfirmButton"
-            onClick={() => {
-              const minutes = parseInt(logInput);
-              if (isNaN(minutes) || minutes <= 0 || minutes > 1440) {
-                alert("Please enter a time between 1 and 1440 minutes.");
-                return;
-              }
-
-              axios
-                .post(`http://127.0.0.1:5000/tasks/${task.id}/log_time`, { minutes })
-                .then((res) => {
-                  const updatedLogs = res.data.logs;
-                  setSelectedTaskLogs(updatedLogs);
-                  setLogInput("");
-                  setTasks((prev) =>
-                    prev.map((t) =>
-                      t.id === task.id ? { ...t, time_logs: updatedLogs } : t
-                    )
-                  );
-                })
-                .catch((err) => console.error(err));
-            }}
-            style={{ backgroundColor: "#66dd66", color: "#fff", padding: "5px 10px" }}
-          >
-            Log Time
-          </button>
-        </div>
-
-        {errorMsg && <p className="ErrorMessage">{errorMsg}</p>}
-
-        <button
-          className="Buttons"
-          onClick={onClose}
-          style={{ marginTop: "20px" }}
-        >
-          Close
-        </button>
-      </div>
-    </div>
-  );
-}
-
-
 
 function TaskTimeCell({ task, onLogClick }) {
   const total = (task.time_logs || []).reduce((sum, log) => sum + (log.minutes || 0), 0);
@@ -770,14 +609,18 @@ function TaskPage() {
         const today = new Date().toISOString().split("T")[0];
   
         if (updatedTask.start_date && updatedTask.start_date > today) {
-          // Move to scheduled tasks
-          setScheduledTasks(prev => [...prev, updatedTask]);
-          setTasks(prev => prev.filter(t => t.id !== updatedTask.id));
+          // Update in scheduledTasks
+          setScheduledTasks(prev => 
+            prev.map(t => t.id === updatedTask.id ? updatedTask : t)
+          );
+          setTasks(prev => prev.filter(t => t.id !== updatedTask.id)); // Remove from active if present
         } else {
-          // Move to active tasks
-          setTasks(prev => prev.map(t => t.id === updatedTask.id ? updatedTask : t));
-          setScheduledTasks(prev => prev.filter(t => t.id !== updatedTask.id));
-        }
+          // Update in active tasks
+          setTasks(prev => 
+            prev.map(t => t.id === updatedTask.id ? updatedTask : t)
+          );
+          setScheduledTasks(prev => prev.filter(t => t.id !== updatedTask.id)); // Remove from scheduled if present
+        }        
   
         setEditingTask(null);
         setShowModal(false);
@@ -866,16 +709,6 @@ function TaskPage() {
           <div className="TaskCell">Dependencies</div>
           <div className="TaskCell">Make Changes</div>
         </div>
-
-        {taskWarning && (
-          <div className="modal-overlay" onMouseDown={() => setTaskWarning("")}>
-            <div className="modal" onMouseDown={(e) => e.stopPropagation()}>
-              <h3>⚠️ Heads up!</h3>
-              <p>{taskWarning}</p>
-              <button className="Buttons" onClick={() => setTaskWarning("")}>Got it</button>
-            </div>
-          </div>
-        )}
 
         {taskWarning && (
           <div className="modal-overlay" onMouseDown={() => setTaskWarning("")}>
@@ -983,6 +816,7 @@ function TaskPage() {
                             ) : null}
                           </td>
                           <div className="TaskCell">{task.priority}</div>
+                    
                           <div className="TaskCell">
                             {task.status}
                             {task.status === "Completed" && task.completion_date && (
@@ -993,14 +827,20 @@ function TaskPage() {
                           </div>
                           <div className="TaskCell">{formatDate(task.due_time)}</div>
                           
-                          <div className="TaskCell">
-                            {task.status}
-                            {task.status === "Completed" && task.completion_date && (
-                              <span style={{ fontSize: "12px", display: "block" }}>
-                                ({formatDate(task.completion_date)})
-                              </span>
-                            )}
-                          </div>
+                          <TaskTimeCell
+                            task={task}
+                            onLogClick={() => {
+                              axios
+                                .get(`http://127.0.0.1:5000/tasks/${task.id}`)
+                                .then(res => {
+                                  setLogModalTask(task);
+                                  setSelectedTaskLogs(res.data.time_logs || []);
+                                  setTimeLogInput("");
+                                  setTimeLogError("");
+                                })
+                                .catch(err => console.error(err));
+                            }}
+                          />
                           
                           <div className="TaskCell">
                             {(task.dependencies || []).map((depId, idx) => {
@@ -1081,9 +921,6 @@ function TaskPage() {
       { !loggedIn &&
         <h3 style={{textAlign: "center"}}>Log in to start making tasks!</h3>
       } 
-      <button className="Buttons" onClick={() => navigate('/streak')} style={{ margin: "10px auto", display: "block" }}>
-        Streak Tracker
-      </button>
 
       {dependencyError && (
         <div className="TaskWarning">
@@ -2158,6 +1995,7 @@ function NavigationButtons() {
       <button className="Buttons" onClick={() => navigate('/')}>Planorama</button>
       <button className="Buttons" style={{marginLeft: 5}} onClick={() => navigate('/dependencies')}>Dependencies</button>
       <button className="Buttons" style={{marginLeft: 5}} onClick={() => navigate('/teams')}>Teams</button>
+      <button className="Buttons" onClick={() => navigate('/streak')} style={{marginLeft: 5}}>Streak</button>
       {/* Commented out these buttons because they were moved to a different menu (top right)
       You can uncomment them for testing if you want*/}
       {/* <button className="Buttons" onClick={() => navigate('/login')}>Log In</button>
