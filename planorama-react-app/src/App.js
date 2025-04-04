@@ -1473,6 +1473,150 @@ const ViewProfile = () => {
   );
 };
 
+function taskTemplates() {
+  
+}
+
+function TemplatesPage() {
+
+  const [templates, setTemplate] = useState([]);
+  const [showModal, setShowModal] = useState(false);
+  const [newTemplate, setNewTemplate] = useState({
+    username: "",
+    name: "",
+    description: "",
+    due_time: "",
+    priority: "Medium",
+    color_tag: "",
+    status: "To-Do",
+    start_date: "",
+    time_log: "",
+    subtasks: [],
+  });
+  const [editingTemplate, setEditingTemplate] = useState(null);
+
+  const COLORS = [
+    { name: "red", value: "#fbb9c5" },
+    { name: "orange", value: "#fdd0b1" },
+    { name: "yellow", value: "#f9efc7" },
+    { name: "green", value: "#c3edbf" },
+    { name: "blue", value: "#b8dfe6" },
+    { name: "purple", value: "#c5bbde"}
+  ];
+
+  const openModal = () => {setShowModal(true)}
+  const closeModal = () => {
+    setShowModal(false)
+  }
+  const resetModal = () => {
+    setNewTemplate({
+      username: "",
+      name: "",
+      description: "",
+      due_time: "",
+      priority: "Medium",
+      color_tag: "",
+      status: "To-Do",
+      start_date: "",
+      time_log: "", // This will store the time log for the task
+      subtasks: [],
+    });
+  }
+
+  const createTaskTemplate = () => {
+
+  }
+
+  return (
+    <div>
+      <div className="Headers">
+        <h1>Templates</h1>
+      </div>
+
+      <div>
+
+      </div>
+
+      <div className="create-template">
+        <button onClick={openModal}>Create New Template</button>
+      </div>
+
+      {showModal && (
+        <div className="modal-overlay">
+          <div className="modal">
+            <h2>Create Template</h2>
+            <input 
+              type="text" name="name" placeholder="Template Name" 
+              //value={editingTemplate ? editingTemplate.name : newTemplate.name}
+              onChange={(e) => setNewTemplate({...newTemplate, name: e.target.value})} 
+              className="TextFields" required 
+            />
+            <input 
+              type="text" name="description" placeholder="Description (Optional)"
+              //value={editingTemplate ? editingTemplate.description : newTemplate.description}
+              onChange={(e) => setNewTemplate({...newTemplate, description: e.target.value})} 
+              className="TextFields" 
+            />
+            <input 
+              type="date" name="due_time" 
+              //value={editingTemplate ? editingTemplate.due_time : newTemplate.due_time}
+              onChange={(e) => setNewTemplate({...newTemplate, due_time: e.target.value})} 
+              className="TextFields" required 
+            />
+            {/* Added start_date input */}
+            <input 
+            type="date" name="start_date"
+              //value={editingTemplate ? editingTemplate.start_date : newTemplate.start_date}
+              onChange={(e) => setNewTemplate({...newTemplate, start_date: e.target.value})}
+              className="TextFields"
+            />
+            <select
+              name="priority"
+              onChange={(e) => setNewTemplate({...newTemplate, priority: e.target.value})}
+              className="TextFields"
+              //value={editingTemplate ? editingTemplate.priority : newTemplate.priority}
+            >
+              <option value="Low">Low</option>
+              <option value="Medium" selected>Medium</option>
+              <option value="High">High</option>
+            </select>
+
+            <select 
+              name="color_tag"
+              onChange={(e) => setNewTemplate({...newTemplate, color_tag: e.target.value})}
+              className="TextFields"
+              //value={editingTemplate ? editingTemplate.color_tag : newTemplate.color_tag}
+            >
+              <option value="">No color</option>
+              {COLORS.map((color) => (
+                <option key={color.value} value={color.value} style={{ backgroundColor: color.value }}>
+                  {color.name}
+                </option>
+              ))}
+            </select>
+              
+            <select 
+              name="status"
+              onChange={(e) => setNewTemplate({...newTemplate, status: e.target.value})}
+              className="TextFields"
+              //value={editingTemplate ? editingTemplate.status : newTemplate.status}
+            >
+              <option value="To-Do">To-Do</option>
+              <option value="In Progress">In Progress</option>
+              <option value="Completed">Completed</option>
+            </select>
+
+            <div className="ButtonContainer">
+              <button onClick={createTaskTemplate}>Save</button>
+              <button onClick={closeModal}>Cancel</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
 function NavigationButtons() {
   const navigate = useNavigate();
 
@@ -1489,6 +1633,7 @@ function NavigationButtons() {
         <img src="/default-profile.png" alt="Profile" className="ProfileIconImage" />
       </button> */}
       <button className='Buttons' style={{marginLeft: 5}} onClick={() => navigate('/gensearch')}>Search</button>
+      <button className='Buttons' style={{marginLeft: 5}} onClick={() => navigate('/templates')}>Templates</button>
       <div className="SettingsButton" onClick={() => navigate('/settings')}> 
         <IoSettingsOutline />
       </div>
@@ -1512,6 +1657,7 @@ function App() {
             <Route path="/settings" element={<SettingsPage />} />
             <Route path="/teams" element={<TeamsPage />} />
             <Route path="/team/:teamID" element={<TeamPage />} />
+            <Route path="/templates" element={<TemplatesPage />} />
             <Route path="/gensearch" element={<SearchPage />} />
             <Route path="/dependencies" element={<TaskDependenciesPage />} />
           </Routes>
