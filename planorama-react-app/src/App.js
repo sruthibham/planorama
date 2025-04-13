@@ -1742,8 +1742,11 @@ const TeamPage = () => {
   const { user } = useGlobal();
   const [ showConfirm, setShowConfirm ] = useState(false);
   const [ showSearch, setShowSearch ] = useState(false);
-  const [query, setQuery] = useState("");
+  const [ query, setQuery ] = useState("");
   const [ userList, setUserList ] = useState([]);
+  const [ showModal, setShowModal ] = useState(false);
+  const [ taskName, setTaskName ] =  useState("");
+  const [ deadline, setDeadline ] = useState("");
 
   useEffect(() => {
     axios.get(`http://127.0.0.1:5000/getteam?teamID=${teamID}`)
@@ -1752,7 +1755,6 @@ const TeamPage = () => {
       })
       .catch(error => console.error("Error fetching team:", error));
   }, [teamID]);
-
 
   useEffect(() => {
     if (user === "Guest") {
@@ -1818,6 +1820,18 @@ const TeamPage = () => {
     })
   }
 
+  const handleCreate = () => {
+    axios.post("http://127.0.0.1:5000/createteamtask", {teamID: teamID, taskName: taskName, deadline: deadline})
+    .then(() => {
+      return axios.get(`http://127.0.0.1:5000/getteam?teamID=${teamID}`)
+    })
+    .then(response => {
+      setTeam(response.data);
+    })
+    setTaskName("")
+    setDeadline("")
+  }
+
   if (!team) return <h3 className='Headers'>Loading team...</h3>;
 
   return (
@@ -1868,7 +1882,52 @@ const TeamPage = () => {
         </div>
       </div>
 
-      <h2 className='AddMember' style={{marginTop:10}}>Tasks</h2>
+      <h2 className='Headers' style={{marginTop:10}}>Tasks<button onClick={()=>setShowModal(true)}>Create Task</button></h2>
+      <div className='Columns' style={{marginTop:10, backgroundColor:"lightgrey"}}>
+        <h3>Task</h3>
+        <h3>Deadline</h3>
+        <h3>Assigned to</h3>
+        <h4>Options</h4>
+      </div>
+      <div>
+        {team.tasks.map((task, index) => (
+          <div key={index} className='Columns'>
+            <h4>{task.taskName}</h4>
+            <h4>{task.deadline}</h4>
+            <h4>{task.assignee !== "" ? task.assignee : "Unassigned"}</h4>
+            {user === team.owner && (
+              <div style={{display:'flex', justifySelf:"center", gap:5}}>
+                <button className="Invite" style={{margin:"auto", width: 58, height: 30}}>Assign</button>
+                <button className="Invite" style={{margin:"auto", backgroundColor:"red"}}>Delete</button>
+              </div>
+            )}
+            {user !== team.owner && <button className="Invite" style={{margin:"auto", width: 58, height: 30}}>Claim</button>}
+          </div>
+        ))}
+      </div>
+
+      {showModal && (
+        <div className='modal-overlay'>
+          <div className='modal' style={{width: 300}}>
+            <div>Task name</div>
+            <input 
+            type="text"
+            placeholder="Name"
+            value={taskName}
+            onChange={(e) => setTaskName(e.target.value)}
+            className="TextFields"></input>
+            <div>Deadline</div>
+            <input 
+            className="TextFields" 
+            type="date" 
+            value={deadline} 
+            onChange={(e) => setDeadline(e.target.value)}></input>
+            <button style={{marginBottom: 5}} onClick={()=>{setShowModal(false); handleCreate()}}>Save</button>
+            <button onClick={()=>{setShowModal(false); setTaskName(""); setDeadline("");}}>Cancel</button>
+          </div>
+        </div>
+      )}
+      
 
       { user !== team.owner && (
         <div className='AddMember'>      
