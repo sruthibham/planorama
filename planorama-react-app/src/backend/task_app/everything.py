@@ -952,6 +952,7 @@ class Teams(db.Model):
     owner = db.Column(db.String(64), nullable=False)
     members = db.Column(db.Text, nullable=True)
     recipients = db.Column(db.Text, nullable=True)
+    tasks = db.Column(db.Text, nullable=True)
 
     def get_members(self):
         return json.loads(self.members) if self.members else []
@@ -986,6 +987,26 @@ class Teams(db.Model):
             recipients.remove(username)
             self.recipients = json.dumps(recipients) if recipients else None
             db.session.commit()
+    
+    def get_tasks(self):
+        return json.loads(self.tasks) if self.tasks else []
+
+    def add_task(self, taskName, assignee, deadline):
+        tasks = self.get_tasks()
+        new_task = {
+            'taskName': taskName,
+            'assignee': assignee,
+            'deadline': deadline
+        }
+        tasks.append(new_task)
+        self.tasks = json.dumps(tasks)
+        db.session.commit()
+
+    def remove_task(self, task_name):
+        tasks = self.get_tasks()
+        updated_tasks = [task for task in tasks if task['taskName'] != task_name]
+        self.tasks = json.dumps(updated_tasks) if updated_tasks else None
+        db.session.commit()
 
 with app.app_context():
     db.create_all()
@@ -1017,7 +1038,8 @@ def getTeams():
         "teamName": team.teamName,
         "owner": team.owner,
         "members": team.get_members(),
-        "recipients": team.get_recipients()
+        "recipients": team.get_recipients(),
+        "tasks": team.get_tasks()
     } for team in user_teams])
 
 # Get all teams that user has an invite to
@@ -1032,7 +1054,8 @@ def getInvites():
         "teamName": team.teamName,
         "owner": team.owner,
         "members": team.get_members(),
-        "recipients": team.get_recipients()
+        "recipients": team.get_recipients(),
+        "tasks": team.get_tasks()
     } for team in user_invites])
 
 # Get the information of a team based on ID
@@ -1046,7 +1069,8 @@ def getTeamFromID():
         "teamName": team.teamName,
         "owner": team.owner,
         "members": team.get_members(),
-        "recipients": team.get_recipients()
+        "recipients": team.get_recipients(),
+        "tasks": team.get_tasks()
     })
 
 # Get profile information based on username
@@ -1131,6 +1155,43 @@ def leaveTeam():
     team.remove_member(currentUser)
     return jsonify(data)
 
+# Create task
+@app.route("/createteamtask", methods=["POST"])
+def createTeamTask():
+    data = request.get_json()
+    teamID = data.get("teamID")
+    taskName = data.get("taskName")
+    deadline = data.get("deadline")
+
+    team = Teams.query.get(teamID)
+
+    deadline_date = datetime.strptime(deadline, "%Y-%m-%d").date()
+    if deadline_date < datetime.today().date():
+        return jsonify({"error": "Deadline cannot be in the past."}), 400
+    
+    existing_tasks = team.get_tasks()
+    for task in existing_tasks:
+        if task["taskName"] == taskName:
+            return jsonify({"error": "Task with this name already exists."}), 400
+
+    assignee = ""
+
+    team.add_task(taskName, assignee, deadline)
+
+    return jsonify(team.get_tasks())
+
+@app.route("/deleteteamtask", methods=["POST"])
+def deleteTeamTask():
+    data = request.get_json()
+    teamID = data.get("teamID")
+    taskName = data.get("taskName")
+
+    print("Incoming delete request for teamID:", teamID, "taskName:", taskName)
+    team = Teams.query.get(teamID)
+
+    team.remove_task(taskName)
+
+    return jsonify(team.get_tasks())
 
 # STREAK.PY ------------------------------------
 class UserStreak(db.Model):
