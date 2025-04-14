@@ -1004,7 +1004,7 @@ class Teams(db.Model):
 
     def remove_task(self, task_name):
         tasks = self.get_tasks()
-        updated_tasks = [task for task in tasks if task['task_name'] != task_name]
+        updated_tasks = [task for task in tasks if task['taskName'] != task_name]
         self.tasks = json.dumps(updated_tasks) if updated_tasks else None
         db.session.commit()
 
@@ -1165,9 +1165,31 @@ def createTeamTask():
 
     team = Teams.query.get(teamID)
 
+    deadline_date = datetime.strptime(deadline, "%Y-%m-%d").date()
+    if deadline_date < datetime.today().date():
+        return jsonify({"error": "Deadline cannot be in the past."}), 400
+    
+    existing_tasks = team.get_tasks()
+    for task in existing_tasks:
+        if task["taskName"] == taskName:
+            return jsonify({"error": "Task with this name already exists."}), 400
+
     assignee = ""
 
     team.add_task(taskName, assignee, deadline)
+
+    return jsonify(team.get_tasks())
+
+@app.route("/deleteteamtask", methods=["POST"])
+def deleteTeamTask():
+    data = request.get_json()
+    teamID = data.get("teamID")
+    taskName = data.get("taskName")
+
+    print("Incoming delete request for teamID:", teamID, "taskName:", taskName)
+    team = Teams.query.get(teamID)
+
+    team.remove_task(taskName)
 
     return jsonify(team.get_tasks())
 
