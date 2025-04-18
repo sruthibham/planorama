@@ -1197,6 +1197,7 @@ def claimTask():
     data = request.get_json()
     teamID = data.get("teamID")
     user = data.get("user")
+    print("AHHHHH", user, "AHHHHH")
     taskName = data.get("taskName")
 
     team = Teams.query.get(teamID)

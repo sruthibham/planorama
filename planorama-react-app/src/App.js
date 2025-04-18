@@ -1750,7 +1750,17 @@ const TeamPage = () => {
   const [ showError1, setShowError1 ] = useState(false);
   const [ showError2, setShowError2 ] = useState(false);
   const [ errorMsg, setErrorMsg ] = useState("");
+  const [ showList, setShowList ] = useState(false);
+  const [ currentOpen, setCurrentOpen ] = useState("");
 
+  const handleList = (curr) => {
+    if (showList === true && curr === currentOpen) {
+      setShowList(false);
+    } else {
+      setShowList(true);
+      setCurrentOpen(curr);
+    }
+  }
   useEffect(() => {
     axios.get(`http://127.0.0.1:5000/getteam?teamID=${teamID}`)
       .then(response => {
@@ -1863,9 +1873,10 @@ const TeamPage = () => {
     
   }
 
-  const handleClaim = (task_name) => {
-    axios.post("http://127.0.0.1:5000/claim", {teamID: teamID, user: user, taskName: task_name})
+  const handleClaim = (task_name, target) => {
+    axios.post("http://127.0.0.1:5000/claim", {teamID: teamID, user: target, taskName: task_name})
     .then(() => {
+      console.log(target)
       return axios.get(`http://127.0.0.1:5000/getteam?teamID=${teamID}`)
     })
     .then(response => {
@@ -1939,13 +1950,27 @@ const TeamPage = () => {
             <h4>{task.deadline}</h4>
             <h4>{task.assignee !== "" ? task.assignee : "Unassigned"}</h4>
             {user === team.owner && (
-              <div style={{display:'flex', justifySelf:"center", gap:5}}>
-                <button className="Invite" style={{margin:"auto", width: 58, height: 30}}>Assign</button>
-                <button className="Invite" style={{margin:"auto", backgroundColor:"red"}} onClick={() => handleDeleteTask(task.taskName)}>Delete</button>
-              </div>
+                <div style={{display:'flex', justifySelf:"center", gap:5}}>
+                  {task.assignee === "" && <button className="Invite" style={{margin:"auto", width: 58, height: 30}} onClick={() => handleList(task.taskName)}>Assign</button>}
+                  {task.assignee !== "" && <button className="Invite" style={{margin:"auto", width: 80, height: 30}} onClick={() => handleClaim(task.taskName, task.assignee)}>Unnassign</button>}
+                  <button className="Invite" style={{margin:"auto", backgroundColor:"red"}} onClick={() => handleDeleteTask(task.taskName)}>Delete</button>
+                </div>
             )}
-            {user !== team.owner && task.assignee === "" && <button className="Invite" style={{margin:"auto", width: 58, height: 30}} onClick={() => handleClaim(task.taskName)}>Claim</button>}
-            {user !== team.owner && task.assignee === user && <button className="Invite" style={{margin:"auto", width: 58, height: 30}} onClick={() => handleClaim(task.taskName)}>Unclaim</button>}
+            {user !== team.owner && task.assignee === "" && <button className="Invite" style={{margin:"auto", width: 58, height: 30}} onClick={() => handleClaim(task.taskName, user)}>Claim</button>}
+            {user !== team.owner && task.assignee === user && <button className="Invite" style={{margin:"auto", width: 64, height: 30}} onClick={() => handleClaim(task.taskName, user)}>Unclaim</button>}
+            {showList && currentOpen === task.taskName && (<><div></div><div></div><div></div><div></div>
+              <div>
+                {team.members.map((member, index) => (
+                  <div key={index} className="Column">
+                    <div className="user-row">
+                      {member}
+                      <button className='Invite' style={{width:60}} onClick={() => {handleClaim(task.taskName, member); handleList(task.taskName)}}>Choose</button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              </>
+            )}
 
           </div>
         ))}
