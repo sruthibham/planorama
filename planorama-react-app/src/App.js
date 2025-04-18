@@ -1958,7 +1958,7 @@ const TeamPage = () => {
             )}
             {user !== team.owner && task.assignee === "" && <button className="Invite" style={{margin:"auto", width: 58, height: 30}} onClick={() => handleClaim(task.taskName, user)}>Claim</button>}
             {user !== team.owner && task.assignee === user && <button className="Invite" style={{margin:"auto", width: 64, height: 30}} onClick={() => handleClaim(task.taskName, user)}>Unclaim</button>}
-            {showList && currentOpen === task.taskName && (<><div></div><div></div><div></div><div></div>
+            {showList && currentOpen === task.taskName && (<><div></div><div></div><div></div>
               <div>
                 {team.members.map((member, index) => (
                   <div key={index} className="Column">
