@@ -1186,13 +1186,35 @@ def deleteTeamTask():
     teamID = data.get("teamID")
     taskName = data.get("taskName")
 
-    print("Incoming delete request for teamID:", teamID, "taskName:", taskName)
     team = Teams.query.get(teamID)
 
     team.remove_task(taskName)
 
     return jsonify(team.get_tasks())
 
+@app.route("/claim", methods=["POST"])
+def claimTask():
+    data = request.get_json()
+    teamID = data.get("teamID")
+    user = data.get("user")
+    taskName = data.get("taskName")
+
+    team = Teams.query.get(teamID)
+
+
+    tasks = team.get_tasks()
+    for task in tasks:
+        if (task["taskName"] == taskName):
+            if (task["assignee"] == user):
+                task["assignee"] = ""
+                team.tasks = json.dumps(tasks)
+                db.session.commit()
+            else:
+                task["assignee"] = user
+                team.tasks = json.dumps(tasks)
+                db.session.commit()
+    
+    return jsonify(team.get_tasks())
 # STREAK.PY ------------------------------------
 class UserStreak(db.Model):
     username = db.Column(db.String(64), primary_key=True)

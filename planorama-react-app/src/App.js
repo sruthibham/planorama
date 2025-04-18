@@ -1863,6 +1863,17 @@ const TeamPage = () => {
     
   }
 
+  const handleClaim = (task_name) => {
+    axios.post("http://127.0.0.1:5000/claim", {teamID: teamID, user: user, taskName: task_name})
+    .then(() => {
+      return axios.get(`http://127.0.0.1:5000/getteam?teamID=${teamID}`)
+    })
+    .then(response => {
+      setTeam(response.data);
+    })
+
+  }
+
   if (!team) return <h3 className='Headers'>Loading team...</h3>;
 
   return (
@@ -1933,7 +1944,9 @@ const TeamPage = () => {
                 <button className="Invite" style={{margin:"auto", backgroundColor:"red"}} onClick={() => handleDeleteTask(task.taskName)}>Delete</button>
               </div>
             )}
-            {user !== team.owner && <button className="Invite" style={{margin:"auto", width: 58, height: 30}}>Claim</button>}
+            {user !== team.owner && task.assignee === "" && <button className="Invite" style={{margin:"auto", width: 58, height: 30}} onClick={() => handleClaim(task.taskName)}>Claim</button>}
+            {user !== team.owner && task.assignee === user && <button className="Invite" style={{margin:"auto", width: 58, height: 30}} onClick={() => handleClaim(task.taskName)}>Unclaim</button>}
+
           </div>
         ))}
       </div>
