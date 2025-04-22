@@ -1095,7 +1095,14 @@ function TaskPage() {
       </div>
 
       { loggedIn &&
-        <button className="MakeTaskButton" onClick={() => setShowModal(true)}>Create Task</button>
+        <button className="MakeTaskButton" onClick={() => {
+          setSuggestedSubtasks([]);
+          setAcceptedSuggestions([]);
+          setRejectedSuggestions([]);
+          setAcceptedSuggestionsSnapshot([]);
+          setRejectedSuggestionsSnapshot([]);
+          setShowModal(true);
+        }}>Create Task</button>
       } 
       {loggedIn && (
         <>
