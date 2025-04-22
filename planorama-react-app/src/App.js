@@ -2,6 +2,7 @@ import './App.css';
 import ProfilePage from './ProfilePage';
 import SettingsPage from './SettingsPage';
 import TaskDependenciesPage from './TaskDependenciesPage';
+import WeeklySummaryPage from './WeeklySummaryPage';
 import { BrowserRouter as Router, Routes, Route, useNavigate, useParams } from 'react-router-dom';
 import { useState, useEffect, createContext, useContext } from 'react';
 import { GlobalProvider, useGlobal } from "./GlobalContext";
