@@ -37,8 +37,9 @@ body {
 }
 
 .modal {
-  width: 50%;
-  max-width: 500px;
+  width: 600px;
+  max-height: 60vh;
+  overflow-y: auto;
   background: white;
   padding: 20px;
   border-radius: 10px;
@@ -474,12 +475,12 @@ body {
   text-align: center;
 }
 
-.ButtonContainer {
+.ButtonsContainer {
   display: flex;
   justify-content: center;
   gap: 15px;
   width: 100%;
-  margin-top: 20px;
+  margin-top: 10px;
 }
 
 .SettingsOption {
@@ -933,4 +934,26 @@ button:hover {
 .missed {
   background-color: #fbd6d6;
   color: #8c2b2b;
+}
+
+.SuggestedSubtaskContainer {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.SuggestedSubtaskBox {
+  border: 2px dashed grey;
+  padding: 10px;
+  border-radius: 8px;
+  background-color: #f9f9f9;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.SuggestedSubtaskActions {
+  display: flex;
+  gap: 5px;
 }

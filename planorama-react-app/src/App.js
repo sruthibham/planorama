@@ -295,6 +295,11 @@ function TaskPage() {
   const [scheduledTasks, setScheduledTasks] = useState([]);
   const [showModal, setShowModal] = useState(false);
   const [newSubtaskName, setNewSubtaskName] = useState("");
+  const [suggestedSubtasks, setSuggestedSubtasks] = useState([]);
+  const [rejectedSuggestions, setRejectedSuggestions] = useState([]);
+  const [acceptedSuggestions, setAcceptedSuggestions] = useState([]);
+  const [acceptedSuggestionsSnapshot, setAcceptedSuggestionsSnapshot] = useState([]);
+  const [rejectedSuggestionsSnapshot, setRejectedSuggestionsSnapshot] = useState([]);
   const [newTask, setNewTask] = useState({
     username: "",
     name: "",
@@ -426,8 +431,29 @@ function TaskPage() {
       ...taskToEdit, 
       subtasks: taskToEdit.subtasks ? taskToEdit.subtasks : [] // Ensure subtasks exist
     });
+
+    setAcceptedSuggestionsSnapshot(acceptedSuggestions);
+    setRejectedSuggestionsSnapshot(rejectedSuggestions);
   
     setShowModal(true);
+
+    axios.post(`http://127.0.0.1:5000/suggest_subtasks/${taskToEdit.id}`, {
+      name: taskToEdit.name,
+      description: taskToEdit.description
+    })
+    .then(res => {
+      const rawSuggestions = res.data.subtasks || [];
+    
+      const filteredSuggestions = rawSuggestions.filter(
+        s => !rejectedSuggestions.includes(s) && !acceptedSuggestions.includes(s)
+      );
+    
+      setSuggestedSubtasks(filteredSuggestions);
+    })
+    .catch(err => {
+      console.error("Failed to fetch suggestions:", err);
+      setSuggestedSubtasks([]); // fallback so .length doesn't error
+    });
   };
 
   //officially deletes tasks
@@ -1200,6 +1226,8 @@ function TaskPage() {
             onMouseDown={() => {
               setError("");
               setWarning("");
+              setAcceptedSuggestions(acceptedSuggestionsSnapshot);
+              setRejectedSuggestions(rejectedSuggestionsSnapshot);
               if (editingTask) {
                 const cleanedSubtasks = editingTask.subtasks.map(sub => ({
                   ...sub,
@@ -1427,6 +1455,98 @@ function TaskPage() {
                   </button>
                 </div>
               ))}
+              {suggestedSubtasks.length > 0 && (
+                <div className="SubtaskSuggestionList" style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', marginBottom: '10px' }}>
+                  {suggestedSubtasks.map((suggestion, index) => (
+                    <div
+                      key={index}
+                      style={{
+                        border: "2px dashed gray",
+                        backgroundColor: "#f9f9f9",
+                        padding: "10px",
+                        borderRadius: "8px",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        gap: "10px",
+                        width: "100%",
+                      }}
+                    >
+                      <span style={{ fontStyle: "italic", fontSize: "14px" }}>{suggestion}</span>
+                      <div style={{ display: "flex", gap: "8px" }}>
+                        <button
+                          className="SubtaskButton SubtaskConfirmButton"
+                          onClick={() => {
+                            const newSub = { id: Date.now(), name: suggestion, completed: false };
+                            if (editingTask) {
+                              setEditingTask(prev => ({
+                                ...prev,
+                                subtasks: [...prev.subtasks, newSub]
+                              }));
+                            } else {
+                              setNewTask(prev => ({
+                                ...prev,
+                                subtasks: [...prev.subtasks, newSub]
+                              }));
+                            }
+                            axios.post(`http://127.0.0.1:5000/tasks/${editingTask?.id || 'new'}/accept_suggestion`, { suggestion })
+                              .then(() => {
+                                setAcceptedSuggestions(prev => [...prev, suggestion]);
+                                setSuggestedSubtasks(prev => prev.filter((_, i) => i !== index));
+                              })
+                              .catch(err => console.error("Failed to accept suggestion:", err));
+                          }}
+                        >
+                          Add
+                        </button>
+                        <button
+                          className="SubtaskButton SubtaskEditButton"
+                          onClick={() => {
+                            const editedName = prompt("Edit subtask name:", suggestion);
+                            if (editedName) {
+                              const newSub = { id: Date.now(), name: editedName, completed: false };
+                              if (editingTask) {
+                                setEditingTask(prev => ({
+                                  ...prev,
+                                  subtasks: [...prev.subtasks, newSub]
+                                }));
+                              } else {
+                                setNewTask(prev => ({
+                                  ...prev,
+                                  subtasks: [...prev.subtasks, newSub]
+                                }));
+                              }
+
+                              // Mark original as accepted and remove from suggestions
+                              axios.post(`http://127.0.0.1:5000/tasks/${editingTask?.id || 'new'}/accept_suggestion`, { suggestion })
+                                .then(() => {
+                                  setAcceptedSuggestions(prev => [...prev, suggestion]);
+                                  setSuggestedSubtasks(prev => prev.filter((_, i) => i !== index));
+                                })
+                                .catch(err => console.error("Failed to accept edited suggestion:", err));
+                            }
+                          }}
+                        >
+                          Edit
+                        </button>
+                        <button
+                          className="SubtaskButton SubtaskDeleteButton"
+                          onClick={() => {
+                            axios.post(`http://127.0.0.1:5000/tasks/${editingTask?.id || 'new'}/reject_suggestion`, { suggestion })
+                              .then(() => {
+                                setRejectedSuggestions(prev => [...prev, suggestion]);
+                                setSuggestedSubtasks(prev => prev.filter((_, i) => i !== index));
+                              })
+                              .catch(err => console.error("Failed to reject suggestion:", err));
+                          }}
+                        >
+                          Reject
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
               {isAddingSubtask ? (
                 <div className="AddSubtaskRow" style={{ display: "flex", alignItems: "center", gap: "10px" }}>
                   <input
@@ -1475,12 +1595,20 @@ function TaskPage() {
               )}
             </div>
             )}
-            <div className = "ButtonContainer"> 
-              <button onClick={editingTask ? handleUpdateTask : handleSubmit} className="Buttons">Save</button>
+            <div className = "ButtonsContainer"> 
+              <button onClick={() => {
+                setIsAddingSubtask(false);
+                setNewSubtaskName("");
+                editingTask ? handleUpdateTask() : handleSubmit();
+              }} className="Buttons">Save</button>
               <button onClick={() => {
                 setError("");
                 setWarning("");
                 setEditingTask(null);
+                setAcceptedSuggestions([]);
+                setRejectedSuggestions([]);
+                setAcceptedSuggestionsSnapshot(acceptedSuggestions);
+                setRejectedSuggestionsSnapshot(rejectedSuggestions);
                 setNewTask({
                 username: user,
                 name: "",
