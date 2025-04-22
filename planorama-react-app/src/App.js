@@ -1897,11 +1897,14 @@ const TeamPage = () => {
   }
 
   const handleSetDisplay = (member) => {
-    if (showDisplay === member) {
-      setShowDisplay(null);
-    } else {
-      setShowDisplay(member);
-    }
+    setDisplayNames(prev => ({
+      ...prev,
+      [member]: displayNames,
+    }));
+
+    setShowDisplay(null);
+    setDisplayNames("");
+
   }
 
   const handleResetDisplay = (member) => {
@@ -1929,7 +1932,7 @@ const TeamPage = () => {
             <div className='SideBySide'>
               <div className='ChangeDisplay'>
                 <li key={index}>
-                  {member}
+                  {displayNames[member] || member}
                   {user === member && <button onClick={() => handleChangeDisplay(member)} style={{marginBottom:20}}>Change Display Name</button>}
                 </li>
               </div>
