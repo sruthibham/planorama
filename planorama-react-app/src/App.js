@@ -1753,8 +1753,13 @@ const TeamPage = () => {
   const [ showList, setShowList ] = useState(false);
   const [ currentOpen, setCurrentOpen ] = useState("");
 
+  const [ displayName, setDisplayName ] = useState("");
   const [ displayNames, setDisplayNames ] = useState({});
   const [ showDisplay, setShowDisplay ] = useState(null);
+
+  const [ commentText, setCommentText ] = useState("");
+  const [ commentingOnTask, setCommentingOnTask ] = useState(null);
+  //const [ showDisplay, setShowDisplay ] = useState(null);
 
   const handleList = (curr) => {
     if (showList === true && curr === currentOpen) {
@@ -1893,26 +1898,41 @@ const TeamPage = () => {
       setShowDisplay(null);
     } else {
       setShowDisplay(member);
+      setDisplayName("");
     }
+  }
+
+  const handleCommentTask = (task_name) => {
+
+    
   }
 
   const handleSetDisplay = (member) => {
-    setDisplayNames(prev => ({
-      ...prev,
-      [member]: displayNames,
-    }));
+    //axios.post("http://127.0.0.1:5000/setdisplayname", {teamID: teamID, username: member, displayName: displayName})
+    //.then(() => {
+      setDisplayNames(prev => ({
+        ...prev,
+        [member]: displayName,
+      }));
 
-    setShowDisplay(null);
-    setDisplayNames("");
+      setShowDisplay(null);
+      setDisplayName("");
+    //})
 
+    
   }
 
   const handleResetDisplay = (member) => {
-    if (showDisplay === member) {
+    //axios.post("http://127.0.0.1:5000/resetdisplayname", {teamID: teamID, username: member, displayName: member})
+    //.then(() => {
+      setDisplayNames(prev => ({
+        ...prev,
+        [member]: member,
+      }));
+
       setShowDisplay(null);
-    } else {
-      setShowDisplay(member);
-    }
+      setDisplayName("");
+    //})
   }
 
   if (!team) return <h3 className='Headers'>Loading team...</h3>;
@@ -1942,12 +1962,12 @@ const TeamPage = () => {
                   style={{marginRight: 10}}
                   type="text"
                   placeholder="Change Display Name..."
-                  //value={displayNames}
-                  onChange={(e) => setDisplayNames(e.target.value)}
+                  value={displayName}
+                  onChange={(e) => setDisplayName(e.target.value)}
                   className='DisplayBar'
                 />
                 )}
-                { user === member && showDisplay && displayNames !== "" && (
+                { user === member && showDisplay && /*displayName !== "" &&  */(
                   <div className='SetButtons'>
                     {<button className='SetDisplayName' onClick={() => handleSetDisplay(member)}>Set</button>}
                     {<button className='SetResetName' onClick={() => handleResetDisplay(member)}>Reset</button>}
@@ -2005,12 +2025,13 @@ const TeamPage = () => {
           <div key={index} className='Columns'>
             <h4>{task.taskName}</h4>
             <h4>{task.deadline}</h4>
-            <h4>{task.assignee !== "" ? task.assignee : "Unassigned"}</h4>
+            <h4>{task.assignee !== "" ? (displayNames[task.assignee] || task.assignee) : "Unassigned"}</h4>
             {user === team.owner && (
                 <div style={{display:'flex', justifySelf:"center", gap:5}}>
                   {task.assignee === "" && <button className="Invite" style={{margin:"auto", width: 58, height: 30}} onClick={() => handleList(task.taskName)}>Assign</button>}
                   {task.assignee !== "" && <button className="Invite" style={{margin:"auto", width: 80, height: 30}} onClick={() => handleClaim(task.taskName, task.assignee)}>Unnassign</button>}
                   <button className="Invite" style={{margin:"auto", backgroundColor:"red"}} onClick={() => handleDeleteTask(task.taskName)}>Delete</button>
+                  <button className="Comment" style={{margin:"auto", backgroundColor:"orange"}} onClick={() => handleCommentTask(task.taskName)}>Comment</button>                  
                 </div>
             )}
             {user !== team.owner && task.assignee === "" && <button className="Invite" style={{margin:"auto", width: 58, height: 30}} onClick={() => handleClaim(task.taskName, user)}>Claim</button>}
@@ -2020,7 +2041,7 @@ const TeamPage = () => {
                 {team.members.map((member, index) => (
                   <div key={index} className="Column">
                     <div className="user-row">
-                      {member}
+                      {displayNames[member] || member}
                       <button className='Invite' style={{width:60}} onClick={() => {handleClaim(task.taskName, member); handleList(task.taskName)}}>Choose</button>
                     </div>
                   </div>
