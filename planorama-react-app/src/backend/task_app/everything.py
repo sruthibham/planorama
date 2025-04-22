@@ -953,6 +953,7 @@ class Teams(db.Model):
     members = db.Column(db.Text, nullable=True)
     recipients = db.Column(db.Text, nullable=True)
     tasks = db.Column(db.Text, nullable=True)
+    displayName = db.Column(db.String(64), nullable=False)
 
     def get_members(self):
         return json.loads(self.members) if self.members else []

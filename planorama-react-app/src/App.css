@@ -790,6 +790,52 @@ button:hover {
   cursor: pointer;
 }
 
+/* display name styling */
+
+.DisplayBar {
+  width: 200px;
+  height: 24px;
+  padding: 4px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  outline: none;
+}
+
+.SetButtons {
+  display: flex;
+  flex-direction: row;
+  gap: 8px;
+  margin-top: 5px;
+}
+
+.SetDisplayName {
+  width: 100px;
+  height: 24px;
+  padding: 0;
+  gap: 8px;
+  font-size: 1rem;
+  background-color: #3b82f6;
+  color: white;
+  border: none;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  cursor: pointer;
+}
+.SetResetName {
+  width: 100px;
+  height: 24px;
+  padding: 0;
+  font-size: 1rem;
+  background-color: #3b82f6;
+  color: white;
+  border: none;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  cursor: pointer;
+}
+
 /* --- Time Log Styling --- */
 .TimeLogSection {
   width: 100%;

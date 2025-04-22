@@ -1753,6 +1753,9 @@ const TeamPage = () => {
   const [ showList, setShowList ] = useState(false);
   const [ currentOpen, setCurrentOpen ] = useState("");
 
+  const [ displayNames, setDisplayNames ] = useState({});
+  const [ showDisplay, setShowDisplay ] = useState(null);
+
   const handleList = (curr) => {
     if (showList === true && curr === currentOpen) {
       setShowList(false);
@@ -1885,6 +1888,30 @@ const TeamPage = () => {
 
   }
 
+  const handleChangeDisplay = (member) => {
+    if (showDisplay === member) {
+      setShowDisplay(null);
+    } else {
+      setShowDisplay(member);
+    }
+  }
+
+  const handleSetDisplay = (member) => {
+    if (showDisplay === member) {
+      setShowDisplay(null);
+    } else {
+      setShowDisplay(member);
+    }
+  }
+
+  const handleResetDisplay = (member) => {
+    if (showDisplay === member) {
+      setShowDisplay(null);
+    } else {
+      setShowDisplay(member);
+    }
+  }
+
   if (!team) return <h3 className='Headers'>Loading team...</h3>;
 
   return (
@@ -1894,14 +1921,41 @@ const TeamPage = () => {
         <button onClick={() => navigate("/teams")}>Back</button>
       </div>
       <h3 className='Headers' style={{"marginBottom":20}}>Leader: {team.owner}</h3>
+
       <div className='MemberList'> 
         <h4>Members: </h4>
         <ul>
           {team.members.map((member, index) => (
-            <li key={index}>{member}</li>
+            <div className='SideBySide'>
+              <div className='ChangeDisplay'>
+                <li key={index}>
+                  {member}
+                  {user === member && <button onClick={() => handleChangeDisplay(member)} style={{marginBottom:20}}>Change Display Name</button>}
+                </li>
+              </div>
+              <div className='ChangeDisplay'>
+                { user === member && showDisplay === member && (
+                  <input
+                  style={{marginRight: 10}}
+                  type="text"
+                  placeholder="Change Display Name..."
+                  //value={displayNames}
+                  onChange={(e) => setDisplayNames(e.target.value)}
+                  className='DisplayBar'
+                />
+                )}
+                { user === member && showDisplay && displayNames !== "" && (
+                  <div className='SetButtons'>
+                    {<button className='SetDisplayName' onClick={() => handleSetDisplay(member)}>Set</button>}
+                    {<button className='SetResetName' onClick={() => handleResetDisplay(member)}>Reset</button>}
+                  </div>
+                )}
+              </div>
+            </div>
           ))}
         </ul>
       </div>
+
       <div className='SideBySide'>
         <div className='AddMember'>      
           {user === team.owner && <button onClick={handleOpenSearch} style={{marginBottom: 10}}>Add member</button>}
