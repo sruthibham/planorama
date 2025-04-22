@@ -658,6 +658,66 @@ def time_summary():
     total = sum(task.get_total_time_spent() for task in tasks)
     return jsonify({"total_time_spent": total})
 
+@app.route('/weekly_summary', methods=['GET'])
+def get_weekly_summary():
+    username = request.args.get('username')
+    week_start_str = request.args.get('week_start')  # Optional filter
+
+    today = datetime.today()
+    if week_start_str:
+        week_start = datetime.strptime(week_start_str, "%Y-%m-%d")
+    else:
+        week_start = today - timedelta(days=today.weekday() + 1)  # Sunday
+
+    week_end = week_start + timedelta(days=6)
+
+    tasks = Task.query.filter(Task.user == username).all()
+
+    WEEKDAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
+    day_stats = {day: {'task_count': 0, 'minutes': 0, 'tasks': [], 'logs': []} for day in WEEKDAYS}
+
+    for task in tasks:
+        if task.status == "Completed" and task.completion_date:
+            try:
+                comp_date = datetime.strptime(task.completion_date, "%Y-%m-%d").date()
+                if week_start.date() <= comp_date <= week_end.date():
+                    day = comp_date.strftime("%A")
+                    day_stats[day]['task_count'] += 1
+                    day_stats[day]['tasks'].append(task.name)
+            except Exception as e:
+                print("BAD DATE:", task.completion_date, e)
+
+        for log in task.get_time_logs():
+            try:
+                ts = datetime.fromisoformat(log["timestamp"])
+                if week_start <= ts <= week_end + timedelta(days=1):
+                    day = ts.strftime("%A")
+                    if day in day_stats:
+                        day_stats[day]['minutes'] += log.get("minutes", 0)
+                        day_stats[day]['logs'].append({"task": task.name, "minutes": log["minutes"]})
+            except Exception as e:
+                print("Bad timestamp in log:", log, e)
+
+    for day in day_stats:
+        day_stats[day]['score'] = day_stats[day]['task_count'] + day_stats[day]['minutes'] / 60.0
+
+    scores = [(day, info['score']) for day, info in day_stats.items()]
+    if scores:
+        max_score = max(score for _, score in scores)
+        min_score = min(score for _, score in scores)
+        max_days = [day for day, score in scores if score == max_score and score > 0]
+        min_days = [day for day, score in scores if score == min_score]
+    else:
+        max_days = []
+        min_days = []
+
+    return jsonify({
+        'summary': day_stats,
+        'week_range': f"{week_start.strftime('%b %d')} – {week_end.strftime('%b %d')}",
+        'most_productive': ", ".join(max_days) if max_days else None,
+        'least_productive': ", ".join(min_days) if min_days else None
+    })
+
 with app.app_context():
        db.create_all()
 
