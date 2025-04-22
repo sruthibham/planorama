@@ -9,6 +9,9 @@ from flask_cors import CORS
 import json
 import threading
 import time
+import re
+from difflib import SequenceMatcher
+from sqlalchemy.ext.mutable import MutableList
 
 
 app = Flask(__name__)
@@ -34,6 +37,41 @@ db = SQLAlchemy(app)
 
 PRIORITY_OPTIONS = ["Low", "Medium", "High"]
 STATUS_OPTIONS = ["To-Do", "In Progress", "Completed"]
+SUGGESTION_BANK = {
+    "write essay": ["Research topic", "Outline structure", "Write introduction", "Write body paragraphs", "Write conclusion", "Proofread and revise"],
+    "plan trip": ["Choose destination", "Book flights", "Reserve accommodation", "Create itinerary", "Pack bags"],
+    "study for exam": ["Review notes", "Make flashcards", "Do practice problems", "Take mock test"]
+}
+STOPWORDS = {"for", "the", "and", "of", "in", "to"}
+
+def clean_text(text):
+    return [word for word in re.sub(r"[^\w\s]", "", text.lower()).split() if word not in STOPWORDS]
+
+def fuzzy_match_task(task_name):
+    cleaned_input = clean_text(task_name)
+    best_match = None
+    highest_score = 0.0
+
+    for phrase, subtasks in SUGGESTION_BANK.items():
+        cleaned_phrase = clean_text(phrase)
+        overlap = len(set(cleaned_input) & set(cleaned_phrase)) / max(len(set(cleaned_input) | set(cleaned_phrase)), 1)
+        similarity = SequenceMatcher(None, " ".join(cleaned_input), " ".join(cleaned_phrase)).ratio()
+        score = max(overlap, similarity)
+        if score > highest_score and score > 0.5:  # threshold
+            best_match = (phrase, subtasks)
+            highest_score = score
+
+    return best_match  # (phrase, subtasks) or None
+
+def fallback_split_description(description):
+    if not description:
+        return []
+
+    # Split on common delimiters: commas, semicolons, periods, ampersands, "and", and dashes
+    split_phrases = re.split(r',|;|\.|&| and | - ', description, flags=re.IGNORECASE)
+
+    # Strip whitespace and remove empty strings
+    return [phrase.strip() for phrase in split_phrases if phrase.strip()]
 
 class Task(db.Model):
     user = db.Column(db.String(32), nullable=False)
@@ -45,10 +83,11 @@ class Task(db.Model):
     color_tag = db.Column(db.String(20), nullable=True)
     status = db.Column(db.String(20), default="To-Do")
     subtasks = db.Column(db.Text, default="[]", nullable=True)
+    accepted_suggestions = db.Column(MutableList.as_mutable(db.JSON), default=list)
+    rejected_suggestions = db.Column(MutableList.as_mutable(db.JSON), default=list)
     start_date = db.Column(db.String(50), nullable=True)  # New Field
     time_logs = db.Column(db.Text, default="[]", nullable=True)
     completion_date = db.Column(db.String(50), nullable=True)  # <-- Add this field
-
     order_index = db.Column(db.Integer, nullable=False, default=0)
     dependencies = db.Column(db.Text, default="[]")
 
@@ -69,6 +108,7 @@ class Task(db.Model):
 
     def set_subtasks(self, subtasks_list):
         self.subtasks = json.dumps(subtasks_list)
+    
 
     def get_time_logs(self):
         try:
@@ -468,6 +508,50 @@ def update_subtask(task_id, subtask_id):
         "subtasks": subtasks,
         "status": task.status
     }), 200
+
+@app.route("/suggest_subtasks/<int:task_id>", methods=["POST"])
+def suggest_subtasks(task_id):
+    task = Task.query.get(task_id)
+    data = request.json
+    task_name = data.get("name", "")
+    description = data.get("description", "")
+
+    match = fuzzy_match_task(task_name)
+    suggestions = match[1] if match else fallback_split_description(description)
+
+    # Remove already accepted/rejected
+    filtered = [s for s in suggestions if s and s not in (task.accepted_suggestions or []) and s not in (task.rejected_suggestions or [])]
+
+    return jsonify({
+        "source": "description_fallback" if not match else "suggestion_bank",
+        "subtasks": filtered
+    })
+
+@app.route("/tasks/<int:task_id>/accept_suggestion", methods=["POST"])
+def accept_suggestion(task_id):
+    task = Task.query.get(task_id)
+    suggestion = request.json.get("suggestion")
+
+    if suggestion:
+        if not task.accepted_suggestions:
+            task.accepted_suggestions = []
+        if suggestion not in task.accepted_suggestions:
+            task.accepted_suggestions.append(suggestion)
+        db.session.commit()
+    return jsonify(success=True)
+
+@app.route("/tasks/<int:task_id>/reject_suggestion", methods=["POST"])
+def reject_suggestion(task_id):
+    task = Task.query.get(task_id)
+    suggestion = request.json.get("suggestion")
+
+    if suggestion:
+        if not task.rejected_suggestions:
+            task.rejected_suggestions = []
+        if suggestion not in task.rejected_suggestions:
+            task.rejected_suggestions.append(suggestion)
+        db.session.commit()
+    return jsonify(success=True)
 
 # Start task immediately (move to active)
 @app.route("/tasks/<int:task_id>/start_now", methods=["PUT"])
