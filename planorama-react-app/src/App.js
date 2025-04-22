@@ -2626,6 +2626,7 @@ function NavigationButtons() {
       <button className="Buttons" style={{marginLeft: 5}} onClick={() => navigate('/dependencies')}>Dependencies</button>
       <button className="Buttons" style={{marginLeft: 5}} onClick={() => navigate('/teams')}>Teams</button>
       <button className="Buttons" onClick={() => navigate('/streak')} style={{marginLeft: 5}}>Streak</button>
+      <button className="Buttons" style={{marginLeft: 5}} onClick={() => navigate('/weeklysummary')}>Weekly Summary</button>
       {/* Commented out these buttons because they were moved to a different menu (top right)
       You can uncomment them for testing if you want*/}
       {/* <button className="Buttons" onClick={() => navigate('/login')}>Log In</button>
@@ -2658,6 +2659,7 @@ function App() {
             <Route path="/profile/:usern/from/:camefrom" element={<ViewProfile />} />
             <Route path="/settings" element={<SettingsPage />} />
             <Route path="/streak" element={<StreakTracker />} />
+            <Route path="/weeklysummary" element={<WeeklySummaryPage />} />
             <Route path="/teams" element={<TeamsPage />} />
             <Route path="/team/:teamID" element={<TeamPage />} />
             <Route path="/templates" element={<TemplatesPage />} />
