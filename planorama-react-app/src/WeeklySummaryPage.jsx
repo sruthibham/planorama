@@ -46,7 +46,7 @@ function WeeklySummaryPage() {
     const today = new Date();
     const sundayOffset = today.getDay() === 0 ? 0 : today.getDay();
     const currentSunday = new Date(today);
-    currentSunday.setDate(today.getDate() - sundayOffset - 1);
+    currentSunday.setDate(today.getDate() - sundayOffset);
 
     const pastWeeks = [];
     for (let i = 0; i < 6; i++) {
