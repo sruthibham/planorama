@@ -9,6 +9,9 @@ from flask_cors import CORS
 import json
 import threading
 import time
+import re
+from difflib import SequenceMatcher
+from sqlalchemy.ext.mutable import MutableList
 
 
 app = Flask(__name__)
@@ -34,6 +37,41 @@ db = SQLAlchemy(app)
 
 PRIORITY_OPTIONS = ["Low", "Medium", "High"]
 STATUS_OPTIONS = ["To-Do", "In Progress", "Completed"]
+SUGGESTION_BANK = {
+    "write essay": ["Research topic", "Outline structure", "Write introduction", "Write body paragraphs", "Write conclusion", "Proofread and revise"],
+    "plan trip": ["Choose destination", "Book flights", "Reserve accommodation", "Create itinerary", "Pack bags"],
+    "study for exam": ["Review notes", "Make flashcards", "Do practice problems", "Take mock test"]
+}
+STOPWORDS = {"for", "the", "and", "of", "in", "to"}
+
+def clean_text(text):
+    return [word for word in re.sub(r"[^\w\s]", "", text.lower()).split() if word not in STOPWORDS]
+
+def fuzzy_match_task(task_name):
+    cleaned_input = clean_text(task_name)
+    best_match = None
+    highest_score = 0.0
+
+    for phrase, subtasks in SUGGESTION_BANK.items():
+        cleaned_phrase = clean_text(phrase)
+        overlap = len(set(cleaned_input) & set(cleaned_phrase)) / max(len(set(cleaned_input) | set(cleaned_phrase)), 1)
+        similarity = SequenceMatcher(None, " ".join(cleaned_input), " ".join(cleaned_phrase)).ratio()
+        score = max(overlap, similarity)
+        if score > highest_score and score > 0.5:  # threshold
+            best_match = (phrase, subtasks)
+            highest_score = score
+
+    return best_match  # (phrase, subtasks) or None
+
+def fallback_split_description(description):
+    if not description:
+        return []
+
+    # Split on common delimiters: commas, semicolons, periods, ampersands, "and", and dashes
+    split_phrases = re.split(r',|;|\.|&| and | - ', description, flags=re.IGNORECASE)
+
+    # Strip whitespace and remove empty strings
+    return [phrase.strip() for phrase in split_phrases if phrase.strip()]
 
 class Task(db.Model):
     user = db.Column(db.String(32), nullable=False)
@@ -45,10 +83,11 @@ class Task(db.Model):
     color_tag = db.Column(db.String(20), nullable=True)
     status = db.Column(db.String(20), default="To-Do")
     subtasks = db.Column(db.Text, default="[]", nullable=True)
+    accepted_suggestions = db.Column(MutableList.as_mutable(db.JSON), default=list)
+    rejected_suggestions = db.Column(MutableList.as_mutable(db.JSON), default=list)
     start_date = db.Column(db.String(50), nullable=True)  # New Field
     time_logs = db.Column(db.Text, default="[]", nullable=True)
     completion_date = db.Column(db.String(50), nullable=True)  # <-- Add this field
-
     order_index = db.Column(db.Integer, nullable=False, default=0)
     dependencies = db.Column(db.Text, default="[]")
 
@@ -69,6 +108,7 @@ class Task(db.Model):
 
     def set_subtasks(self, subtasks_list):
         self.subtasks = json.dumps(subtasks_list)
+    
 
     def get_time_logs(self):
         try:
@@ -469,6 +509,50 @@ def update_subtask(task_id, subtask_id):
         "status": task.status
     }), 200
 
+@app.route("/suggest_subtasks/<int:task_id>", methods=["POST"])
+def suggest_subtasks(task_id):
+    task = Task.query.get(task_id)
+    data = request.json
+    task_name = data.get("name", "")
+    description = data.get("description", "")
+
+    match = fuzzy_match_task(task_name)
+    suggestions = match[1] if match else fallback_split_description(description)
+
+    # Remove already accepted/rejected
+    filtered = [s for s in suggestions if s and s not in (task.accepted_suggestions or []) and s not in (task.rejected_suggestions or [])]
+
+    return jsonify({
+        "source": "description_fallback" if not match else "suggestion_bank",
+        "subtasks": filtered
+    })
+
+@app.route("/tasks/<int:task_id>/accept_suggestion", methods=["POST"])
+def accept_suggestion(task_id):
+    task = Task.query.get(task_id)
+    suggestion = request.json.get("suggestion")
+
+    if suggestion:
+        if not task.accepted_suggestions:
+            task.accepted_suggestions = []
+        if suggestion not in task.accepted_suggestions:
+            task.accepted_suggestions.append(suggestion)
+        db.session.commit()
+    return jsonify(success=True)
+
+@app.route("/tasks/<int:task_id>/reject_suggestion", methods=["POST"])
+def reject_suggestion(task_id):
+    task = Task.query.get(task_id)
+    suggestion = request.json.get("suggestion")
+
+    if suggestion:
+        if not task.rejected_suggestions:
+            task.rejected_suggestions = []
+        if suggestion not in task.rejected_suggestions:
+            task.rejected_suggestions.append(suggestion)
+        db.session.commit()
+    return jsonify(success=True)
+
 # Start task immediately (move to active)
 @app.route("/tasks/<int:task_id>/start_now", methods=["PUT"])
 def start_task_now(task_id):
@@ -573,6 +657,66 @@ def time_summary():
     tasks = Task.query.filter_by(user=currentUser).all()
     total = sum(task.get_total_time_spent() for task in tasks)
     return jsonify({"total_time_spent": total})
+
+@app.route('/weekly_summary', methods=['GET'])
+def get_weekly_summary():
+    username = request.args.get('username')
+    week_start_str = request.args.get('week_start')  # Optional filter
+
+    today = datetime.today()
+    if week_start_str:
+        week_start = datetime.strptime(week_start_str, "%Y-%m-%d")
+    else:
+        week_start = today - timedelta(days=today.weekday() + 1)  # Sunday
+
+    week_end = week_start + timedelta(days=6)
+
+    tasks = Task.query.filter(Task.user == username).all()
+
+    WEEKDAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
+    day_stats = {day: {'task_count': 0, 'minutes': 0, 'tasks': [], 'logs': []} for day in WEEKDAYS}
+
+    for task in tasks:
+        if task.status == "Completed" and task.completion_date:
+            try:
+                comp_date = datetime.strptime(task.completion_date, "%Y-%m-%d").date()
+                if week_start.date() <= comp_date <= week_end.date():
+                    day = comp_date.strftime("%A")
+                    day_stats[day]['task_count'] += 1
+                    day_stats[day]['tasks'].append(task.name)
+            except Exception as e:
+                print("BAD DATE:", task.completion_date, e)
+
+        for log in task.get_time_logs():
+            try:
+                ts = datetime.fromisoformat(log["timestamp"])
+                if week_start <= ts <= week_end + timedelta(days=1):
+                    day = ts.strftime("%A")
+                    if day in day_stats:
+                        day_stats[day]['minutes'] += log.get("minutes", 0)
+                        day_stats[day]['logs'].append({"task": task.name, "minutes": log["minutes"]})
+            except Exception as e:
+                print("Bad timestamp in log:", log, e)
+
+    for day in day_stats:
+        day_stats[day]['score'] = day_stats[day]['task_count'] + day_stats[day]['minutes'] / 60.0
+
+    scores = [(day, info['score']) for day, info in day_stats.items()]
+    if scores:
+        max_score = max(score for _, score in scores)
+        min_score = min(score for _, score in scores)
+        max_days = [day for day, score in scores if score == max_score and score > 0]
+        min_days = [day for day, score in scores if score == min_score]
+    else:
+        max_days = []
+        min_days = []
+
+    return jsonify({
+        'summary': day_stats,
+        'week_range': f"{week_start.strftime('%b %d')} – {week_end.strftime('%b %d')}",
+        'most_productive': ", ".join(max_days) if max_days else None,
+        'least_productive': ", ".join(min_days) if min_days else None
+    })
 
 with app.app_context():
        db.create_all()
@@ -954,6 +1098,38 @@ class Teams(db.Model):
     recipients = db.Column(db.Text, nullable=True)
     tasks = db.Column(db.Text, nullable=True)
 
+    """
+    displayNames = db.Column(db.Text, nullable=True)
+
+    
+
+    def get_display_name(self):
+        return json.loads(self.displayNames) if self.displayNames else {}
+
+    def set_display_name(self, username, display_name):
+        try:
+            display_names = self.get_display_name()
+            display_names[username] = display_name
+            self.displayNames = json.dumps(display_names)
+            db.session.commit()
+        except Exception as e:
+            db.session.rollback()
+            #return jsonify({"error", "failed to set display name", "message"}), 500
+
+
+    def reset_display_name(self, username, display_name):
+        try:
+            display_names = self.get_display_name()
+            if username in display_names:
+                display_names[username] = username
+                self.displayNames = json.dumps(display_names) if display_names else None
+                db.session.commit()
+        except Exception as e:
+            db.session.rollback()
+            #return jsonify({"error", "failed to set display name", "message"}), 500
+
+    """
+
     def get_members(self):
         return json.loads(self.members) if self.members else []
 
@@ -1039,7 +1215,8 @@ def getTeams():
         "owner": team.owner,
         "members": team.get_members(),
         "recipients": team.get_recipients(),
-        "tasks": team.get_tasks()
+        "tasks": team.get_tasks(),
+        #"display": team.get_display_name()
     } for team in user_teams])
 
 # Get all teams that user has an invite to
@@ -1055,7 +1232,8 @@ def getInvites():
         "owner": team.owner,
         "members": team.get_members(),
         "recipients": team.get_recipients(),
-        "tasks": team.get_tasks()
+        "tasks": team.get_tasks(),
+        #"display": team.get_display_name()
     } for team in user_invites])
 
 # Get the information of a team based on ID
@@ -1070,7 +1248,8 @@ def getTeamFromID():
         "owner": team.owner,
         "members": team.get_members(),
         "recipients": team.get_recipients(),
-        "tasks": team.get_tasks()
+        "tasks": team.get_tasks(),
+        #"display": team.get_display_name()
     })
 
 # Get profile information based on username
@@ -1216,6 +1395,50 @@ def claimTask():
                 db.session.commit()
     
     return jsonify(team.get_tasks())
+
+"""
+
+#sets the users display name
+@app.route("/setdisplayname", methods=["POST"])
+def setDisplayName():
+    try:
+        data = request.get_json()
+        teamID = data.get("teamID")
+        username = data.get("username")
+        display_name = data.get("displayName")
+
+        team = Teams.query.get(teamID)
+
+        success = team.set_display_name(username, display_name)
+        if success:
+            return jsonify({"success": True})
+        else:
+            return jsonify({"error": "Failed to display name"})
+        
+    except Exception as e:
+        return jsonify({"error", str(e)}), 500
+
+#resets the users display name
+@app.route("/resetdisplayname", methods=["POST"])
+def resetDisplayName():
+    try:
+        data = request.get_json()
+        teamID = data.get("teamID")
+        username = data.get("username")
+        display_name = data.get("displayName")
+
+        team = Teams.query.get(teamID)
+
+        success = team.reset_display_name(username, display_name)
+        if success:
+            return jsonify({"success": True})
+        else:
+            return jsonify({"error": "Failed to display name"})
+    except Exception as e:
+        return jsonify({"error", str(e)}), 500
+
+"""
+    
 # STREAK.PY ------------------------------------
 class UserStreak(db.Model):
     username = db.Column(db.String(64), primary_key=True)

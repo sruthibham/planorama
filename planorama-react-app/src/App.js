@@ -2,6 +2,7 @@ import './App.css';
 import ProfilePage from './ProfilePage';
 import SettingsPage from './SettingsPage';
 import TaskDependenciesPage from './TaskDependenciesPage';
+import WeeklySummaryPage from './WeeklySummaryPage';
 import { BrowserRouter as Router, Routes, Route, useNavigate, useParams } from 'react-router-dom';
 import { useState, useEffect, createContext, useContext } from 'react';
 import { GlobalProvider, useGlobal } from "./GlobalContext";
@@ -295,6 +296,11 @@ function TaskPage() {
   const [scheduledTasks, setScheduledTasks] = useState([]);
   const [showModal, setShowModal] = useState(false);
   const [newSubtaskName, setNewSubtaskName] = useState("");
+  const [suggestedSubtasks, setSuggestedSubtasks] = useState([]);
+  const [rejectedSuggestions, setRejectedSuggestions] = useState([]);
+  const [acceptedSuggestions, setAcceptedSuggestions] = useState([]);
+  const [acceptedSuggestionsSnapshot, setAcceptedSuggestionsSnapshot] = useState([]);
+  const [rejectedSuggestionsSnapshot, setRejectedSuggestionsSnapshot] = useState([]);
   const [newTask, setNewTask] = useState({
     username: "",
     name: "",
@@ -426,8 +432,29 @@ function TaskPage() {
       ...taskToEdit, 
       subtasks: taskToEdit.subtasks ? taskToEdit.subtasks : [] // Ensure subtasks exist
     });
+
+    setAcceptedSuggestionsSnapshot(acceptedSuggestions);
+    setRejectedSuggestionsSnapshot(rejectedSuggestions);
   
     setShowModal(true);
+
+    axios.post(`http://127.0.0.1:5000/suggest_subtasks/${taskToEdit.id}`, {
+      name: taskToEdit.name,
+      description: taskToEdit.description
+    })
+    .then(res => {
+      const rawSuggestions = res.data.subtasks || [];
+    
+      const filteredSuggestions = rawSuggestions.filter(
+        s => !rejectedSuggestions.includes(s) && !acceptedSuggestions.includes(s)
+      );
+    
+      setSuggestedSubtasks(filteredSuggestions);
+    })
+    .catch(err => {
+      console.error("Failed to fetch suggestions:", err);
+      setSuggestedSubtasks([]); // fallback so .length doesn't error
+    });
   };
 
   //officially deletes tasks
@@ -1069,7 +1096,14 @@ function TaskPage() {
       </div>
 
       { loggedIn &&
-        <button className="MakeTaskButton" onClick={() => setShowModal(true)}>Create Task</button>
+        <button className="MakeTaskButton" onClick={() => {
+          setSuggestedSubtasks([]);
+          setAcceptedSuggestions([]);
+          setRejectedSuggestions([]);
+          setAcceptedSuggestionsSnapshot([]);
+          setRejectedSuggestionsSnapshot([]);
+          setShowModal(true);
+        }}>Create Task</button>
       } 
       {loggedIn && (
         <>
@@ -1200,6 +1234,8 @@ function TaskPage() {
             onMouseDown={() => {
               setError("");
               setWarning("");
+              setAcceptedSuggestions(acceptedSuggestionsSnapshot);
+              setRejectedSuggestions(rejectedSuggestionsSnapshot);
               if (editingTask) {
                 const cleanedSubtasks = editingTask.subtasks.map(sub => ({
                   ...sub,
@@ -1427,6 +1463,98 @@ function TaskPage() {
                   </button>
                 </div>
               ))}
+              {suggestedSubtasks.length > 0 && (
+                <div className="SubtaskSuggestionList" style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', marginBottom: '10px' }}>
+                  {suggestedSubtasks.map((suggestion, index) => (
+                    <div
+                      key={index}
+                      style={{
+                        border: "2px dashed gray",
+                        backgroundColor: "#f9f9f9",
+                        padding: "10px",
+                        borderRadius: "8px",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        gap: "10px",
+                        width: "100%",
+                      }}
+                    >
+                      <span style={{ fontStyle: "italic", fontSize: "14px" }}>{suggestion}</span>
+                      <div style={{ display: "flex", gap: "8px" }}>
+                        <button
+                          className="SubtaskButton SubtaskConfirmButton"
+                          onClick={() => {
+                            const newSub = { id: Date.now(), name: suggestion, completed: false };
+                            if (editingTask) {
+                              setEditingTask(prev => ({
+                                ...prev,
+                                subtasks: [...prev.subtasks, newSub]
+                              }));
+                            } else {
+                              setNewTask(prev => ({
+                                ...prev,
+                                subtasks: [...prev.subtasks, newSub]
+                              }));
+                            }
+                            axios.post(`http://127.0.0.1:5000/tasks/${editingTask?.id || 'new'}/accept_suggestion`, { suggestion })
+                              .then(() => {
+                                setAcceptedSuggestions(prev => [...prev, suggestion]);
+                                setSuggestedSubtasks(prev => prev.filter((_, i) => i !== index));
+                              })
+                              .catch(err => console.error("Failed to accept suggestion:", err));
+                          }}
+                        >
+                          Add
+                        </button>
+                        <button
+                          className="SubtaskButton SubtaskEditButton"
+                          onClick={() => {
+                            const editedName = prompt("Edit subtask name:", suggestion);
+                            if (editedName) {
+                              const newSub = { id: Date.now(), name: editedName, completed: false };
+                              if (editingTask) {
+                                setEditingTask(prev => ({
+                                  ...prev,
+                                  subtasks: [...prev.subtasks, newSub]
+                                }));
+                              } else {
+                                setNewTask(prev => ({
+                                  ...prev,
+                                  subtasks: [...prev.subtasks, newSub]
+                                }));
+                              }
+
+                              // Mark original as accepted and remove from suggestions
+                              axios.post(`http://127.0.0.1:5000/tasks/${editingTask?.id || 'new'}/accept_suggestion`, { suggestion })
+                                .then(() => {
+                                  setAcceptedSuggestions(prev => [...prev, suggestion]);
+                                  setSuggestedSubtasks(prev => prev.filter((_, i) => i !== index));
+                                })
+                                .catch(err => console.error("Failed to accept edited suggestion:", err));
+                            }
+                          }}
+                        >
+                          Edit
+                        </button>
+                        <button
+                          className="SubtaskButton SubtaskDeleteButton"
+                          onClick={() => {
+                            axios.post(`http://127.0.0.1:5000/tasks/${editingTask?.id || 'new'}/reject_suggestion`, { suggestion })
+                              .then(() => {
+                                setRejectedSuggestions(prev => [...prev, suggestion]);
+                                setSuggestedSubtasks(prev => prev.filter((_, i) => i !== index));
+                              })
+                              .catch(err => console.error("Failed to reject suggestion:", err));
+                          }}
+                        >
+                          Reject
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
               {isAddingSubtask ? (
                 <div className="AddSubtaskRow" style={{ display: "flex", alignItems: "center", gap: "10px" }}>
                   <input
@@ -1475,12 +1603,20 @@ function TaskPage() {
               )}
             </div>
             )}
-            <div className = "ButtonContainer"> 
-              <button onClick={editingTask ? handleUpdateTask : handleSubmit} className="Buttons">Save</button>
+            <div className = "ButtonsContainer"> 
+              <button onClick={() => {
+                setIsAddingSubtask(false);
+                setNewSubtaskName("");
+                editingTask ? handleUpdateTask() : handleSubmit();
+              }} className="Buttons">Save</button>
               <button onClick={() => {
                 setError("");
                 setWarning("");
                 setEditingTask(null);
+                setAcceptedSuggestions([]);
+                setRejectedSuggestions([]);
+                setAcceptedSuggestionsSnapshot(acceptedSuggestions);
+                setRejectedSuggestionsSnapshot(rejectedSuggestions);
                 setNewTask({
                 username: user,
                 name: "",
@@ -1753,6 +1889,14 @@ const TeamPage = () => {
   const [ showList, setShowList ] = useState(false);
   const [ currentOpen, setCurrentOpen ] = useState("");
 
+  const [ displayName, setDisplayName ] = useState("");
+  const [ displayNames, setDisplayNames ] = useState({});
+  const [ showDisplay, setShowDisplay ] = useState(null);
+
+  const [ commentText, setCommentText ] = useState("");
+  const [ commentingOnTask, setCommentingOnTask ] = useState(null);
+  //const [ showDisplay, setShowDisplay ] = useState(null);
+
   const handleList = (curr) => {
     if (showList === true && curr === currentOpen) {
       setShowList(false);
@@ -1885,6 +2029,48 @@ const TeamPage = () => {
 
   }
 
+  const handleChangeDisplay = (member) => {
+    if (showDisplay === member) {
+      setShowDisplay(null);
+    } else {
+      setShowDisplay(member);
+      setDisplayName("");
+    }
+  }
+
+  const handleCommentTask = (task_name) => {
+
+    
+  }
+
+  const handleSetDisplay = (member) => {
+    //axios.post("http://127.0.0.1:5000/setdisplayname", {teamID: teamID, username: member, displayName: displayName})
+    //.then(() => {
+      setDisplayNames(prev => ({
+        ...prev,
+        [member]: displayName,
+      }));
+
+      setShowDisplay(null);
+      setDisplayName("");
+    //})
+
+    
+  }
+
+  const handleResetDisplay = (member) => {
+    //axios.post("http://127.0.0.1:5000/resetdisplayname", {teamID: teamID, username: member, displayName: member})
+    //.then(() => {
+      setDisplayNames(prev => ({
+        ...prev,
+        [member]: member,
+      }));
+
+      setShowDisplay(null);
+      setDisplayName("");
+    //})
+  }
+
   if (!team) return <h3 className='Headers'>Loading team...</h3>;
 
   return (
@@ -1894,14 +2080,41 @@ const TeamPage = () => {
         <button onClick={() => navigate("/teams")}>Back</button>
       </div>
       <h3 className='Headers' style={{"marginBottom":20}}>Leader: {team.owner}</h3>
+
       <div className='MemberList'> 
         <h4>Members: </h4>
         <ul>
           {team.members.map((member, index) => (
-            <li key={index}>{member}</li>
+            <div className='SideBySide'>
+              <div className='ChangeDisplay'>
+                <li key={index}>
+                  {displayNames[member] || member}
+                  {user === member && <button onClick={() => handleChangeDisplay(member)} style={{marginBottom:20}}>Change Display Name</button>}
+                </li>
+              </div>
+              <div className='ChangeDisplay'>
+                { user === member && showDisplay === member && (
+                  <input
+                  style={{marginRight: 10}}
+                  type="text"
+                  placeholder="Change Display Name..."
+                  value={displayName}
+                  onChange={(e) => setDisplayName(e.target.value)}
+                  className='DisplayBar'
+                />
+                )}
+                { user === member && showDisplay && /*displayName !== "" &&  */(
+                  <div className='SetButtons'>
+                    {<button className='SetDisplayName' onClick={() => handleSetDisplay(member)}>Set</button>}
+                    {<button className='SetResetName' onClick={() => handleResetDisplay(member)}>Reset</button>}
+                  </div>
+                )}
+              </div>
+            </div>
           ))}
         </ul>
       </div>
+
       <div className='SideBySide'>
         <div className='AddMember'>      
           {user === team.owner && <button onClick={handleOpenSearch} style={{marginBottom: 10}}>Add member</button>}
@@ -1950,12 +2163,13 @@ const TeamPage = () => {
             <button className="Invite" style={{margin:'auto'}}>✓</button>
             <h4>{task.taskName}</h4>
             <h4>{task.deadline}</h4>
-            <h4>{task.assignee !== "" ? task.assignee : "Unassigned"}</h4>
+            <h4>{task.assignee !== "" ? (displayNames[task.assignee] || task.assignee) : "Unassigned"}</h4>
             {user === team.owner && (
                 <div style={{display:'flex', justifySelf:"center", gap:5}}>
                   {task.assignee === "" && <button className="Invite" style={{margin:"auto", width: 58, height: 30}} onClick={() => handleList(task.taskName)}>Assign</button>}
                   {task.assignee !== "" && <button className="Invite" style={{margin:"auto", width: 80, height: 30}} onClick={() => handleClaim(task.taskName, task.assignee)}>Unnassign</button>}
                   <button className="Invite" style={{margin:"auto", backgroundColor:"red"}} onClick={() => handleDeleteTask(task.taskName)}>Delete</button>
+                  <button className="Comment" style={{margin:"auto", backgroundColor:"orange"}} onClick={() => handleCommentTask(task.taskName)}>Comment</button>                  
                 </div>
             )}
             {user !== team.owner && task.assignee === "" && <button className="Invite" style={{margin:"auto", width: 58, height: 30}} onClick={() => handleClaim(task.taskName, user)}>Claim</button>}
@@ -1964,8 +2178,8 @@ const TeamPage = () => {
               <div>
                 {team.members.map((member, index) => (
                   <div key={index} className="Column">
-                    <div className="user-row" style={{width: 'auto'}}>
-                      {member}
+                    <div className="user-row">
+                      {displayNames[member] || member}
                       <button className='Invite' style={{width:60}} onClick={() => {handleClaim(task.taskName, member); handleList(task.taskName)}}>Choose</button>
                     </div>
                   </div>
@@ -2415,6 +2629,7 @@ function NavigationButtons() {
       <button className="Buttons" style={{marginLeft: 5}} onClick={() => navigate('/dependencies')}>Dependencies</button>
       <button className="Buttons" style={{marginLeft: 5}} onClick={() => navigate('/teams')}>Teams</button>
       <button className="Buttons" onClick={() => navigate('/streak')} style={{marginLeft: 5}}>Streak</button>
+      <button className="Buttons" style={{marginLeft: 5}} onClick={() => navigate('/weeklysummary')}>Weekly Summary</button>
       {/* Commented out these buttons because they were moved to a different menu (top right)
       You can uncomment them for testing if you want*/}
       {/* <button className="Buttons" onClick={() => navigate('/login')}>Log In</button>
@@ -2447,6 +2662,7 @@ function App() {
             <Route path="/profile/:usern/from/:camefrom" element={<ViewProfile />} />
             <Route path="/settings" element={<SettingsPage />} />
             <Route path="/streak" element={<StreakTracker />} />
+            <Route path="/weeklysummary" element={<WeeklySummaryPage />} />
             <Route path="/teams" element={<TeamsPage />} />
             <Route path="/team/:teamID" element={<TeamPage />} />
             <Route path="/templates" element={<TemplatesPage />} />
