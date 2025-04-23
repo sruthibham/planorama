@@ -1937,6 +1937,7 @@ const TeamPage = () => {
 
       <h2 className='Headers' style={{marginTop:10}}>Tasks<button onClick={()=>setShowModal(true)}>Create Task</button></h2>
       <div className='Columns' style={{marginTop:10, backgroundColor:"lightgrey"}}>
+        <h4>Mark as Complete</h4>
         <h3>Task</h3>
         <h3>Deadline</h3>
         <h3>Assigned to</h3>
@@ -1946,6 +1947,7 @@ const TeamPage = () => {
       <div>
         {team.tasks.map((task, index) => (
           <div key={index} className='Columns'>
+            <button className="Invite" style={{margin:'auto'}}>✓</button>
             <h4>{task.taskName}</h4>
             <h4>{task.deadline}</h4>
             <h4>{task.assignee !== "" ? task.assignee : "Unassigned"}</h4>
@@ -1958,11 +1960,11 @@ const TeamPage = () => {
             )}
             {user !== team.owner && task.assignee === "" && <button className="Invite" style={{margin:"auto", width: 58, height: 30}} onClick={() => handleClaim(task.taskName, user)}>Claim</button>}
             {user !== team.owner && task.assignee === user && <button className="Invite" style={{margin:"auto", width: 64, height: 30}} onClick={() => handleClaim(task.taskName, user)}>Unclaim</button>}
-            {showList && currentOpen === task.taskName && (<><div></div><div></div><div></div>
+            {showList && currentOpen === task.taskName && (<><div></div><div></div><div></div><div></div>
               <div>
                 {team.members.map((member, index) => (
                   <div key={index} className="Column">
-                    <div className="user-row">
+                    <div className="user-row" style={{width: 'auto'}}>
                       {member}
                       <button className='Invite' style={{width:60}} onClick={() => {handleClaim(task.taskName, member); handleList(task.taskName)}}>Choose</button>
                     </div>
