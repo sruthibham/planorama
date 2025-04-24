@@ -1204,6 +1204,7 @@ function TaskPage() {
                             boxShadow: snapshot.isDragging
                               ? "0 0 10px rgba(0,0,0,0.3)"
                               : "none",
+                            border: highlightedTask === task.name ? "3px solid black" : "none"
                           }}
                         >
                           <div className="TaskCell">
