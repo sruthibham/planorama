@@ -11,7 +11,9 @@ const SettingsPage = () => {
     const [textSize, setTextSize] = useState(localStorage.getItem('textSize') || 'medium');
     const [textFont, setTextFont] = useState(localStorage.getItem('textFont') || 'Arial');
     const [textSpacing, setTextSpacing] = useState(localStorage.getItem('textSpacing') || 'None'); 
-    // For deleting account
+    const [notificationsEnabled, setNotificationsEnabled] = useState(
+        localStorage.getItem('notificationsEnabled') === null || localStorage.getItem('notificationsEnabled') === 'true'
+    );
     const [errMsg, setErrMsg] = useState("");
     const { setUser } = useGlobal();
     const { user } = useGlobal();
@@ -31,13 +33,14 @@ const SettingsPage = () => {
         localStorage.setItem('textSize', textSize);
         localStorage.setItem('textFont', textFont);
         localStorage.setItem('textSpacing', textSpacing);
-        
+        localStorage.setItem('notificationsEnabled', notificationsEnabled);
+
         if (user !== "Guest") {
             setLoggedIn(true);
         } else {
             setLoggedIn(false);
         }
-    }, [darkMode, selectedTheme, textSize, textFont, textSpacing, user]);
+    }, [darkMode, selectedTheme, textSize, textFont, textSpacing, notificationsEnabled, user]);
 
     const saveSettings = async () => {
         try {
@@ -47,6 +50,7 @@ const SettingsPage = () => {
                 text_size: textSize,
                 text_font: textFont,
                 text_spacing: textSpacing,
+                notifications_enabled: notificationsEnabled
             });
             alert("Settings saved successfully!");
         } catch (error) {
@@ -59,7 +63,7 @@ const SettingsPage = () => {
         .then(response => {
             setErrMsg(response.data.msg)
             if (response.data.success) {
-                setUser("Guest");  // Update global state
+                setUser("Guest");
             }
         });
     };
@@ -76,13 +80,10 @@ const SettingsPage = () => {
                 return (
                     <div className={SectionClass}>
                         <h3>Appearance</h3>
-                        {/* Dark Mode Toggle */}
                         <div className="SettingsOption">
                             <label>Dark Mode</label>
                             <input type="checkbox" checked={darkMode} onChange={() => setDarkMode(!darkMode)} />
                         </div>
-
-                        {/* Theme Selection */}
                         <div className="SettingsOption">
                             <label>App Theme</label>
                             <select value={selectedTheme} onChange={(e) => setSelectedTheme(e.target.value)}>
@@ -93,54 +94,48 @@ const SettingsPage = () => {
                         </div>
                     </div>
                 );
-                case "textPreferences":
-                    return (
-                        <div className={SectionClass}>
-                            <h3>Text Preferences</h3>
-                            <div className="SettingsOption">
-                                <label>Text Size</label>
-                                <select value={textSize} onChange={(e) => setTextSize(e.target.value)}>
-                                    <option value="small">Small</option>
-                                    <option value="medium">Medium</option>
-                                    <option value="large">Large</option>
-                                </select>
-                            </div>
-    
-                            <div className="SettingsOption">
-                                <label>Text Font</label>
-                                <select value={textFont} onChange={(e) => setTextFont(e.target.value)}>
-                                    <option value="Arial">Arial</option>
-                                    <option value="Georgia">Georgia</option>
-                                    <option value="Verdana">Verdana</option>
-                                </select>
-                            </div>
-    
-                            <div className="SettingsOption">
-                                <label>Text Spacing</label>
-                                <select value={textSpacing} onChange={(e) => setTextSpacing(e.target.value)}>
-                                    <option value="Compact">Compact</option>
-                                    <option value="None">None</option>
-                                    <option value="Wide">Wide</option>
-                                </select>
-                            </div>
+            case "textPreferences":
+                return (
+                    <div className={SectionClass}>
+                        <h3>Text Preferences</h3>
+                        <div className="SettingsOption">
+                            <label>Text Size</label>
+                            <select value={textSize} onChange={(e) => setTextSize(e.target.value)}>
+                                <option value="small">Small</option>
+                                <option value="medium">Medium</option>
+                                <option value="large">Large</option>
+                            </select>
                         </div>
-                    );
+                        <div className="SettingsOption">
+                            <label>Text Font</label>
+                            <select value={textFont} onChange={(e) => setTextFont(e.target.value)}>
+                                <option value="Arial">Arial</option>
+                                <option value="Georgia">Georgia</option>
+                                <option value="Verdana">Verdana</option>
+                            </select>
+                        </div>
+                        <div className="SettingsOption">
+                            <label>Text Spacing</label>
+                            <select value={textSpacing} onChange={(e) => setTextSpacing(e.target.value)}>
+                                <option value="Compact">Compact</option>
+                                <option value="None">None</option>
+                                <option value="Wide">Wide</option>
+                            </select>
+                        </div>
+                    </div>
+                );
             case "language":
                 return (
                     <div className={SectionClass}>
                         <h3>Language & Time</h3>
-                        {/* Start Week on Monday */}
                         <div className="SettingsOption">
                             <label>Start Week on Monday</label>
                             <input type="checkbox" />
                         </div>
-
-                        {/* Timezone */}
                         <div className="SettingsOption">
                             <label>Timezone</label>
                             <select>
                                 <option value="GMT-5">GMT-5 (Indianapolis)</option>
-                                {/* Add more timezone options here */}
                             </select>
                         </div>
                     </div>
@@ -151,7 +146,11 @@ const SettingsPage = () => {
                         <h3>Notifications</h3>
                         <div className="SettingsOption">
                             <label>Enable Notifications</label>
-                            <input type="checkbox" />
+                            <input
+                                type="checkbox"
+                                checked={notificationsEnabled}
+                                onChange={() => setNotificationsEnabled(prev => !prev)}
+                            />
                         </div>
                     </div>
                 );
@@ -172,16 +171,11 @@ const SettingsPage = () => {
                         <li onClick={() => setSelectedCategory("textPreferences")}>Text Preferences</li>
                         <li onClick={() => setSelectedCategory("language")}>Language & Time</li>
                         <li onClick={() => setSelectedCategory("notifications")}>Notifications</li>
-                        {/* Can add more categories here */}
                     </ul>
                 </div>
-
                 <div className="MainContent">
                     {renderRightColumn()}
-
                     <button className="SettingsSaveButton" onClick={saveSettings}>Save Settings</button>
-
-                    {/* Delete Account */}
                     {loggedIn && (
                         <div className="DeleteAccountSection">
                             <button className="SettingsSaveButton" onClick={openPassword}>Delete Account</button>

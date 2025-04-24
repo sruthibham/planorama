@@ -1,4 +1,3 @@
-from datetime import datetime, timedelta
 import os
 import re # Regex for password checking
 from werkzeug.utils import secure_filename
@@ -12,6 +11,7 @@ import time
 import re
 from difflib import SequenceMatcher
 from sqlalchemy.ext.mutable import MutableList
+from datetime import datetime, timedelta, date
 
 
 app = Flask(__name__)
@@ -67,11 +67,17 @@ def fallback_split_description(description):
     if not description:
         return []
 
-    # Split on common delimiters: commas, semicolons, periods, ampersands, "and", and dashes
+    if not re.search(r',|;|\.|&| and | - ', description, flags=re.IGNORECASE):
+        return []
+
     split_phrases = re.split(r',|;|\.|&| and | - ', description, flags=re.IGNORECASE)
 
-    # Strip whitespace and remove empty strings
-    return [phrase.strip() for phrase in split_phrases if phrase.strip()]
+    split_phrases = [phrase.strip() for phrase in split_phrases if phrase.strip()]
+
+    if len(split_phrases) < 2:
+        return []
+
+    return split_phrases
 
 class Task(db.Model):
     user = db.Column(db.String(32), nullable=False)
@@ -87,10 +93,11 @@ class Task(db.Model):
     rejected_suggestions = db.Column(MutableList.as_mutable(db.JSON), default=list)
     start_date = db.Column(db.String(50), nullable=True)  # New Field
     time_logs = db.Column(db.Text, default="[]", nullable=True)
-    completion_date = db.Column(db.String(50), nullable=True)  # <-- Add this field
+    completion_date = db.Column(db.String(50), nullable=True) 
     order_index = db.Column(db.Integer, nullable=False, default=0)
     dependencies = db.Column(db.Text, default="[]")
     rollover_count = db.Column(db.Integer, default=0)
+    estimated_time = db.Column(db.Integer, nullable=True)
 
     def get_dependencies(self):
         try:
@@ -151,8 +158,10 @@ def get_tasks():
         "subtasks": task.get_subtasks(),
         "order_index": task.order_index,
         "dependencies": task.get_dependencies(),
-        "rollover_count": task.rollover_count
+        "rollover_count": task.rollover_count,
+        "estimated_time": task.estimated_time
     } for task in tasks])
+
 
 # Retrieve SCHEDULED tasks
 @app.route("/scheduled_tasks", methods=["GET"])
@@ -173,7 +182,8 @@ def get_scheduled_tasks():
         "subtasks": task.get_subtasks(),
         "order_index": task.order_index,
         "dependencies": task.get_dependencies(),
-        "rollover_count": task.rollover_count
+        "rollover_count": task.rollover_count,
+        "estimated_time": task.estimated_time
     } for task in tasks])
 
 @app.route("/tasks", methods=["POST"])
@@ -230,6 +240,13 @@ def add_task():
     else:
         max_index += 1
 
+    try:
+        estimated_time = float(data.get("estimated_time", 0))
+        if estimated_time < 0:
+            return jsonify({"error": "Estimated time cannot be negative"}), 400
+    except ValueError:
+        return jsonify({"error": "Estimated time must be a valid number"}), 400
+
     new_task = Task(
         user=data["username"],
         name=data["name"],
@@ -242,6 +259,7 @@ def add_task():
         completion_date=completion_date,
         order_index=max_index,
         rollover_count=data["rollover_count"],
+        estimated_time=estimated_time
     )
     new_task.set_subtasks(subtasks)
 
@@ -265,7 +283,8 @@ def add_task():
         "subtasks": new_task.get_subtasks(),
         "order_index": new_task.order_index,
         "dependencies": new_task.get_dependencies(),
-        "rollover_count": new_task.rollover_count
+        "rollover_count": new_task.rollover_count,
+        "estimated_time": new_task.estimated_time
     }}), 201
 
 @app.route("/tasks/reorder", methods=["POST"])
@@ -364,6 +383,37 @@ def rebuild_streak(username):
 
     db.session.commit()
 
+def task_to_dict(task):
+    actual_time = sum(log.minutes for log in task.time_logs)
+    estimated_time = task.estimated_time or 0
+    difference = actual_time - estimated_time
+
+    if difference > 0:
+        time_color = "red"
+    elif difference < 0:
+        time_color = "green"
+    else:
+        time_color = "gray"
+
+    return {
+        "id": task.id,
+        "name": task.name,
+        "description": task.description,
+        "due_time": task.due_time,
+        "priority": task.priority,
+        "color_tag": task.color_tag,
+        "status": task.status,
+        "start_date": task.start_date,
+        "completion_date": task.completion_date,
+        "estimated_time": estimated_time,
+        "actual_time": actual_time,
+        "time_difference": abs(difference),
+        "time_color": time_color,
+        "subtasks": [subtask.to_dict() for subtask in task.subtasks],
+        "time_logs": [log.to_dict() for log in task.time_logs]
+    }
+
+
 
 @app.route("/tasks/<int:task_id>", methods=["DELETE"])
 def delete_task(task_id):
@@ -417,6 +467,8 @@ def update_task(task_id):
     task.due_time = data.get("due_time", task.due_time)
     task.priority = data.get("priority", task.priority)
     task.color_tag = data.get("color_tag", task.color_tag)
+    task.estimated_time = data.get('estimated_time', task.estimated_time)
+
 
     if "time_logs" in data:
         task.set_time_logs(data["time_logs"])
@@ -711,9 +763,18 @@ def get_weekly_summary():
     scores = [(day, info['score']) for day, info in day_stats.items()]
     if scores:
         max_score = max(score for _, score in scores)
-        min_score = min(score for _, score in scores)
         max_days = [day for day, score in scores if score == max_score and score > 0]
-        min_days = [day for day, score in scores if score == min_score]
+
+        valid_min_scores = [
+            (day, score) for day, score in scores
+            if week_start + timedelta(days=WEEKDAYS.index(day)) <= today
+        ]
+
+        if valid_min_scores:
+            min_score = min(score for _, score in valid_min_scores)
+            min_days = [day for day, score in valid_min_scores if score == min_score]
+        else:
+            min_days = []
     else:
         max_days = []
         min_days = []
@@ -724,6 +785,38 @@ def get_weekly_summary():
         'most_productive': ", ".join(max_days) if max_days else None,
         'least_productive': ", ".join(min_days) if min_days else None
     })
+
+@app.route("/notifications")
+def get_notifications():
+    today = date.today()
+    notifications = []
+
+    username = request.args.get('username')
+    tasks = Task.query.filter(Task.user == username).all()
+
+    for task in tasks:
+        name = task.name
+        status = task.status
+        priority = task.priority
+        due_time = datetime.strptime(task.due_time, "%Y-%m-%d").date() if task.due_time else None
+        start_date = datetime.strptime(task.start_date, "%Y-%m-%d").date() if task.start_date else None
+
+        is_active = status != "Completed" and (
+            not start_date or start_date <= today or status == "In Progress"
+        )
+
+        is_overdue = status in ["To-Do", "In Progress"] and due_time and due_time < today
+
+        if is_active and due_time == today:
+            notifications.append(f'"{name}" is due today.')
+
+        if is_overdue:
+            notifications.append(f'"{name}" is overdue.')
+
+        if is_active and priority == "High":
+            notifications.append(f'"{name}" is a pending high priority task.')
+
+    return jsonify(notifications=notifications)
 
 with app.app_context():
        db.create_all()
@@ -1474,6 +1567,26 @@ def get_streak():
         "history": json.loads(streak.history)
     })
 
+@app.route("/tasks/<int:task_id>/time_summary", methods=["GET"])
+def get_time_summary(task_id):
+    task = Task.query.get(task_id)
+    if not task:
+        return jsonify({"error": "Task not found"}), 404
+
+    estimated = task.estimated_time or 0
+    actual = sum(log.minutes for log in task.time_logs) if task.time_logs else 0
+    diff = actual - estimated
+
+    return jsonify({
+        "estimated_time": estimated,
+        "actual_time": actual,
+        "difference": diff,
+        "status": (
+            "on time" if diff == 0 else
+            "under time" if diff < 0 else
+            "over time"
+        )
+    })
 
 
 if __name__ == "__main__":

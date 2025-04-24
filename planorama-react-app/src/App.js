@@ -285,6 +285,9 @@ function TaskPage() {
   //const {tasks, setTasks} = useTasks();
   //const {archivedTasks, setArchivedTasks} = useTasks();
   const [tasks, setTasks] = useState([]);
+  const [notifications, setNotifications] = useState([]);
+  const [showNotifications, setShowNotifications] = useState(true);
+  const [highlightedTask, setHighlightedTask] = useState(null);
   const [archivedTasks, setArchivedTasks] = useState([]); //for the archived tasks
   const [showArchived, setShowArchived] = useState(false);
   const [showArchiveModal, setShowArchiveModal] = useState(false);
@@ -313,7 +316,8 @@ function TaskPage() {
     time_log: "", 
     subtasks: [],
     completion_date: "",
-    rollover_count: 0
+    rollover_count: 0,
+    estimated_time: ""
   });
   const [editingTask, setEditingTask] = useState(null);
   //for filtering by priority
@@ -334,6 +338,9 @@ function TaskPage() {
   const [isAddingSubtask, setIsAddingSubtask] = useState(false);
   const [draggingOverIndex, setDraggingOverIndex] = useState(null);
   const [draggingTaskId, setDraggingTaskId] = useState(null);
+  const [timeModalTask, setTimeModalTask] = useState(null);
+  const [filterTimePerformance, setFilterTimePerformance] = useState("None");
+
   const COLORS = [
     { name: "red", value: "#fbb9c5" },
     { name: "orange", value: "#fdd0b1" },
@@ -370,7 +377,32 @@ function TaskPage() {
         setScheduledTasks(futureTasks);
       })
       .catch(error => console.error("Error fetching tasks:", error));
+
+    axios.get(`http://127.0.0.1:5000/notifications?username=${user}`)
+      .then(res => {
+        console.log("Fetched notifications:", res.data.notifications);
+        setNotifications(res.data.notifications || []);
+      })
+      .catch(err => console.error("Error fetching notifications:", err));
+    
   }, [user]);
+
+  useEffect(() => {
+    const handleClickOutside = () => setHighlightedTask(null);
+    document.addEventListener("click", handleClickOutside);
+    return () => document.removeEventListener("click", handleClickOutside);
+  }, []);
+
+  const refreshNotifications = () => {
+    if (!notificationsEnabled || user === "Guest") return;
+    axios.get(`http://127.0.0.1:5000/notifications?username=${user}`)
+      .then(res => {
+        const newNotifs = res.data.notifications || [];
+        setNotifications([...newNotifs]); // Replace, not merge
+        setDismissedIndices(new Set());   // Reset dismissed
+      })
+      .catch(err => console.error("Error refreshing notifications:", err));
+  };
 
   const handleAddSubtask = () => {
     if (!newSubtaskName.trim()) return;
@@ -639,7 +671,9 @@ function TaskPage() {
           setTaskWarning(""); // Clear warning if it's valid
         }
       }
-  
+
+    
+      
       setEditingTask(updatedTask);
     } else {
       const updatedTask = { ...newTask, [name]: value };
@@ -655,6 +689,21 @@ function TaskPage() {
       }
   
       setNewTask(updatedTask);
+    }
+    if (name === "estimated_time") {
+      if (value === "") {
+        setError("Estimated time is required.");
+        return;
+      }
+      const num = parseInt(value);
+      if (isNaN(num)) {
+        setError("Estimated time must be a number.");
+        return;
+      }
+      if (num < 0) {
+        setError("Estimated time cannot be negative.");
+        return;
+      }
     }
   };
   
@@ -684,6 +733,7 @@ function TaskPage() {
       subtasks: newTask.subtasks,
       completion_date: newTask.status === "Completed" ? newTask.completion_date : null,
       rollover_count: newTask.rollover_count,
+      estimated_time: newTask.estimated_time
     })
       .then(response => {
         const addedTask = response.data.task;
@@ -712,10 +762,12 @@ function TaskPage() {
           time_log: "", // Reset time log
           subtasks: [],
           completion_date: "",
-          rollover_count: 0
+          rollover_count: 0,
+          estimated_time: ""
         });
   
         setShowModal(false);
+        refreshNotifications();
       })
       .catch(error => {
         if (error.response) {
@@ -795,6 +847,7 @@ function TaskPage() {
       subtasks: editingTask.subtasks || [],
       completion_date: editingTask.status === "Completed" ? editingTask.completion_date : null,
       rollover_count: editingTask.rollover_count,
+      estimated_time: editingTask ? editingTask.estimated_time : newTask.estimated_time
     })
       .then(response => {
         const updatedTask = response.data.task;
@@ -816,6 +869,7 @@ function TaskPage() {
   
         setEditingTask(null);
         setShowModal(false);
+        refreshNotifications();
       })
       .catch(error => {
         if (error.response) {
@@ -854,14 +908,159 @@ function TaskPage() {
     filteredTasks = filteredTasks.filter((task) => 
       task.color_tag === filterColor);
   }
+  if (filterTimePerformance !== "None") {
+    filteredTasks = filteredTasks.filter(task => {
+      const estimated = parseInt(task.estimated_time);
+      const actual = (task.time_logs || []).reduce((sum, log) => sum + (log.minutes || 0), 0);
+      if (isNaN(estimated)) return false;
+      if (filterTimePerformance === "Under Time") return actual < estimated;
+      if (filterTimePerformance === "Over Time") return actual > estimated;
+      if (filterTimePerformance === "On Time") return actual === estimated;
+      return true;
+    });
+  }
   const navigate = useNavigate()
 
   const handleMarkComplete = () => {
 
   }
+  const [dismissedIndices, setDismissedIndices] = useState(() => new Set());
+  const [notificationsEnabled, setNotificationsEnabled] = useState(() => {
+    const stored = localStorage.getItem("notificationsEnabled");
+    return stored === null ? true : stored === "true";
+  });
+
+  const dismissNotification = (indexToRemove) => {
+    setDismissedIndices((prev) => new Set(prev).add(indexToRemove));
+  };
+
+  const dismissAllNotifications = () => {
+    setDismissedIndices(new Set(notifications.map((_, i) => i)));
+    setShowNotifications(false);
+  };
+
+  const visibleNotifications = notifications.filter((_, i) => !dismissedIndices.has(i));
+
+  useEffect(() => {
+    sessionStorage.setItem("notificationsEnabled", notificationsEnabled);
+  }, [notificationsEnabled]);
+
+  useEffect(() => {
+    if (!notificationsEnabled || user === "Guest") return;
+  
+    const fetchNotifications = () => {
+      axios.get(`http://127.0.0.1:5000/notifications?username=${user}`)
+        .then(res => {
+          const newNotifs = res.data.notifications || [];
+          setNotifications((prev) => {
+            const combined = [...new Set([...prev, ...newNotifs])];
+            return combined;
+          });
+        })
+        .catch(err => console.error("Error fetching dynamic notifications:", err));
+    };
+  
+    // Run immediately on mount
+    fetchNotifications();
+  
+    // Poll every 20s
+    const interval = setInterval(fetchNotifications, 20000);
+  
+    return () => clearInterval(interval);
+  }, [notificationsEnabled, user]);
+
+  const NotificationPanel = () => (
+    <div
+      className="NotificationPanel"
+      style={{
+        position: "absolute",
+        top: "60px",
+        left: "15px",
+        zIndex: 3000,
+        backgroundColor: "#fff",
+        border: "1px solid #ddd",
+        borderRadius: "8px",
+        padding: "10px",
+        width: "260px",
+        boxShadow: "0 2px 8px rgba(0,0,0,0.15)",
+        fontSize: "13px"
+      }}
+    >
+      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "8px" }}>
+        <span style={{ fontWeight: "bold" }}>Notifications</span>
+        <button onClick={dismissAllNotifications} style={{ fontSize: "11px", padding: "2px 6px", borderRadius: "4px", cursor: "pointer" }}>Dismiss All</button>
+      </div>
+      {visibleNotifications.length === 0 ? (
+        <div style={{ color: "#666", fontStyle: "italic" }}>No new notifications</div>
+      ) : (
+        <ul style={{ padding: 0, margin: 0, listStyleType: "none" }}>
+          {visibleNotifications.map((notif, index) => {
+            const [taskNameRaw, status] = notif.split(" is ");
+            const taskName = taskNameRaw.replace(/^"|"$/g, "");
+            const actualIndex = notifications.findIndex((n, i) => !dismissedIndices.has(i) && n === notif);
+            return (
+              <li key={index} style={{ display: "flex", alignItems: "center", marginBottom: "6px" }}>
+                <div
+                  style={{
+                    backgroundColor: "#f0f0f0",
+                    border: "1px solid #ddd",
+                    borderRadius: "6px",
+                    padding: "6px 8px",
+                    fontSize: "12px",
+                    flexGrow: 1,
+                    cursor: "pointer"
+                  }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setHighlightedTask(taskName);
+                  }}
+                >
+                  <div><strong>{taskName}</strong> <span style={{ fontSize: "12px" }}>is {status}</span></div>
+                </div>
+                <button
+                  onClick={() => dismissNotification(actualIndex)}
+                  style={{
+                    background: "none",
+                    border: "none",
+                    color: "#888",
+                    cursor: "pointer",
+                    fontSize: "12px",
+                    marginLeft: "6px"
+                  }}
+                  title="Dismiss"
+                >
+                  ✖
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </div>
+  );
   
   return (
     <div>
+      {notificationsEnabled && (
+  <>
+    <div style={{ position: "absolute", top: "15px", left: "15px", zIndex: 2000 }}>
+      <button
+        onClick={() => setShowNotifications(prev => !prev)}
+        style={{
+          background: "none",
+          border: "none",
+          cursor: "pointer",
+          fontSize: "24px"
+        }}
+        title="Toggle Notifications"
+      >
+        🔔
+      </button>
+    </div>
+
+    {showNotifications && <NotificationPanel />}
+  </>
+)}
       <h1 className="App">Your Tasks</h1>
       {/* Active Tasks Section */}
       <h2>Active Tasks</h2>
@@ -905,6 +1104,15 @@ function TaskPage() {
             </select>
           </div>
           <div className="TaskCell">Deadline</div>
+          <div className="TaskCell">
+            Estimated Time
+            <select value={filterTimePerformance} onChange={(e) => setFilterTimePerformance(e.target.value)}>
+              <option value="None">None</option>
+              <option value="Under Time">Under Time</option>
+              <option value="On Time">On Time</option>
+              <option value="Over Time">Over Time</option>
+            </select>
+          </div>
           <div className="TaskCell">Time Spent</div>
           <div className="TaskCell">Dependencies</div>
           <div className="TaskCell">Make Changes</div>
@@ -1047,6 +1255,23 @@ function TaskPage() {
                           </div>
                           <div className="TaskCell">{formatDate(task.due_time)}</div>
                           
+                          <button
+                            className="SubtaskButton"
+                            onClick={() => setTimeModalTask(task)}
+                          >
+                            {(() => {
+                              const actual = (task.time_logs || []).reduce((sum, log) => sum + (log.minutes || 0), 0);
+                              const estimated = parseInt(task.estimated_time);
+                              if (isNaN(estimated)) return "No Estimate";
+
+                              const diff = actual - estimated;
+                              if (diff === 0) return "On Time";
+                              if (diff < 0) return `Under Time`;
+                              return `Over Time`;
+                            })()}
+                          </button>
+
+
                           <TaskTimeCell
                             task={task}
                             onLogClick={() => {
@@ -1278,6 +1503,32 @@ function TaskPage() {
           setSelectedTaskLogs={setSelectedTaskLogs}
         />
       )}
+      {timeModalTask && (
+        <div className="modal-overlay" onMouseDown={() => setTimeModalTask(null)}>
+          <div className="modal" onMouseDown={(e) => e.stopPropagation()}>
+            <h3>Time Performance</h3>
+            <p><strong>Estimated:</strong> {timeModalTask.estimated_time || "N/A"} min</p>
+            <p>
+              <strong>Actual:</strong>{" "}
+              {(timeModalTask.time_logs || []).reduce((sum, log) => sum + (log.minutes || 0), 0)} min
+            </p>
+            {timeModalTask.estimated_time && (() => {
+              const actual = (timeModalTask.time_logs || []).reduce((sum, log) => sum + (log.minutes || 0), 0);
+              const estimated = parseInt(timeModalTask.estimated_time);
+              const diff = actual - estimated;
+              let color = "gray";
+              if (diff > 0) color = "red";
+              else if (diff < 0) color = "green";
+              return (
+                <p style={{ color }}>
+                  {diff === 0 ? "On Time" : diff > 0 ? `Over by ${diff} min` : `Under by ${-diff} min`}
+                </p>
+              );
+            })()}
+            <button className="Buttons" onClick={() => setTimeModalTask(null)}>Close</button>
+          </div>
+        </div>
+      )}
 
       {showModal && (
         <div 
@@ -1306,7 +1557,8 @@ function TaskPage() {
                 status: "To-Do",
                 start_date: "",
                 time_log: "", 
-                subtasks: []
+                subtasks: [],
+                completion_date: ""
               });
               setNewSubtaskName("");
               setIsAddingSubtask(false);
@@ -1335,6 +1587,16 @@ function TaskPage() {
               onChange={handleChange} 
               className="TextFields" required 
             />
+            <label>Estimated Time</label>
+            <input
+              type="number"
+              name="estimated_time"
+              className="TextFields"
+              value={editingTask ? editingTask.estimated_time : newTask.estimated_time}
+              onChange={handleChange}
+            />
+
+
             {/* Added start_date input */}
             <label style={{ fontSize: "14px", marginTop: "10px" }}>Start Date (optional)</label>
             <input type="date" name="start_date" 
