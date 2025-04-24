@@ -995,9 +995,13 @@ function TaskPage() {
       ) : (
         <ul style={{ padding: 0, margin: 0, listStyleType: "none" }}>
           {visibleNotifications.map((notif, index) => {
-            const [taskNameRaw, status] = notif.split(" is ");
+            const taskId = notif.id;
+            const message = notif.message;
+            const [taskNameRaw, status] = message.split(" is ");
             const taskName = taskNameRaw.replace(/^"|"$/g, "");
-            const actualIndex = notifications.findIndex((n, i) => !dismissedIndices.has(i) && n === notif);
+            const actualIndex = notifications.findIndex((n, i) =>
+              !dismissedIndices.has(i) && n.id === notif.id && n.message === notif.message
+            );
             return (
               <li key={index} style={{ display: "flex", alignItems: "center", marginBottom: "6px" }}>
                 <div
@@ -1012,7 +1016,7 @@ function TaskPage() {
                   }}
                   onClick={(e) => {
                     e.stopPropagation();
-                    setHighlightedTask(taskName);
+                    setHighlightedTask(taskId);
                   }}
                 >
                   <div><strong>{taskName}</strong> <span style={{ fontSize: "12px" }}>is {status}</span></div>
