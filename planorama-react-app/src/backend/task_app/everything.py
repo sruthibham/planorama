@@ -67,11 +67,17 @@ def fallback_split_description(description):
     if not description:
         return []
 
-    # Split on common delimiters: commas, semicolons, periods, ampersands, "and", and dashes
+    if not re.search(r',|;|\.|&| and | - ', description, flags=re.IGNORECASE):
+        return []
+
     split_phrases = re.split(r',|;|\.|&| and | - ', description, flags=re.IGNORECASE)
 
-    # Strip whitespace and remove empty strings
-    return [phrase.strip() for phrase in split_phrases if phrase.strip()]
+    split_phrases = [phrase.strip() for phrase in split_phrases if phrase.strip()]
+
+    if len(split_phrases) < 2:
+        return []
+
+    return split_phrases
 
 class Task(db.Model):
     user = db.Column(db.String(32), nullable=False)
