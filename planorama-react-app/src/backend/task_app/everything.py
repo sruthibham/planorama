@@ -756,9 +756,18 @@ def get_weekly_summary():
     scores = [(day, info['score']) for day, info in day_stats.items()]
     if scores:
         max_score = max(score for _, score in scores)
-        min_score = min(score for _, score in scores)
         max_days = [day for day, score in scores if score == max_score and score > 0]
-        min_days = [day for day, score in scores if score == min_score]
+
+        valid_min_scores = [
+            (day, score) for day, score in scores
+            if week_start + timedelta(days=WEEKDAYS.index(day)) <= today
+        ]
+
+        if valid_min_scores:
+            min_score = min(score for _, score in valid_min_scores)
+            min_days = [day for day, score in valid_min_scores if score == min_score]
+        else:
+            min_days = []
     else:
         max_days = []
         min_days = []
