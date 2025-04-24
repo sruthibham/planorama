@@ -285,6 +285,9 @@ function TaskPage() {
   //const {tasks, setTasks} = useTasks();
   //const {archivedTasks, setArchivedTasks} = useTasks();
   const [tasks, setTasks] = useState([]);
+  const [notifications, setNotifications] = useState([]);
+  const [showNotifications, setShowNotifications] = useState(true);
+  const [highlightedTask, setHighlightedTask] = useState(null);
   const [archivedTasks, setArchivedTasks] = useState([]); //for the archived tasks
   const [showArchived, setShowArchived] = useState(false);
   const [showArchiveModal, setShowArchiveModal] = useState(false);
@@ -374,7 +377,32 @@ function TaskPage() {
         setScheduledTasks(futureTasks);
       })
       .catch(error => console.error("Error fetching tasks:", error));
+
+    axios.get(`http://127.0.0.1:5000/notifications?username=${user}`)
+      .then(res => {
+        console.log("Fetched notifications:", res.data.notifications);
+        setNotifications(res.data.notifications || []);
+      })
+      .catch(err => console.error("Error fetching notifications:", err));
+    
   }, [user]);
+
+  useEffect(() => {
+    const handleClickOutside = () => setHighlightedTask(null);
+    document.addEventListener("click", handleClickOutside);
+    return () => document.removeEventListener("click", handleClickOutside);
+  }, []);
+
+  const refreshNotifications = () => {
+    if (!notificationsEnabled || user === "Guest") return;
+    axios.get(`http://127.0.0.1:5000/notifications?username=${user}`)
+      .then(res => {
+        const newNotifs = res.data.notifications || [];
+        setNotifications([...newNotifs]); // Replace, not merge
+        setDismissedIndices(new Set());   // Reset dismissed
+      })
+      .catch(err => console.error("Error refreshing notifications:", err));
+  };
 
   const handleAddSubtask = () => {
     if (!newSubtaskName.trim()) return;
@@ -700,6 +728,7 @@ function TaskPage() {
         });
   
         setShowModal(false);
+        refreshNotifications();
       })
       .catch(error => {
         if (error.response) {
@@ -799,6 +828,7 @@ function TaskPage() {
   
         setEditingTask(null);
         setShowModal(false);
+        refreshNotifications();
       })
       .catch(error => {
         if (error.response) {
@@ -853,6 +883,144 @@ function TaskPage() {
   const handleMarkComplete = () => {
 
   }
+  const [dismissedIndices, setDismissedIndices] = useState(() => new Set());
+  const [notificationsEnabled, setNotificationsEnabled] = useState(() => {
+    const stored = localStorage.getItem("notificationsEnabled");
+    return stored === null ? true : stored === "true";
+  });
+
+  const dismissNotification = (indexToRemove) => {
+    setDismissedIndices((prev) => new Set(prev).add(indexToRemove));
+  };
+
+  const dismissAllNotifications = () => {
+    setDismissedIndices(new Set(notifications.map((_, i) => i)));
+    setShowNotifications(false);
+  };
+
+  const visibleNotifications = notifications.filter((_, i) => !dismissedIndices.has(i));
+
+  useEffect(() => {
+    sessionStorage.setItem("notificationsEnabled", notificationsEnabled);
+  }, [notificationsEnabled]);
+
+  useEffect(() => {
+    if (!notificationsEnabled || user === "Guest") return;
+  
+    const fetchNotifications = () => {
+      axios.get(`http://127.0.0.1:5000/notifications?username=${user}`)
+        .then(res => {
+          const newNotifs = res.data.notifications || [];
+          setNotifications((prev) => {
+            const combined = [...new Set([...prev, ...newNotifs])];
+            return combined;
+          });
+        })
+        .catch(err => console.error("Error fetching dynamic notifications:", err));
+    };
+  
+    // Run immediately on mount
+    fetchNotifications();
+  
+    // Poll every 20s
+    const interval = setInterval(fetchNotifications, 20000);
+  
+    return () => clearInterval(interval);
+  }, [notificationsEnabled, user]);
+
+  const NotificationPanel = () => (
+    <div
+      className="NotificationPanel"
+      style={{
+        position: "absolute",
+        top: "60px",
+        left: "15px",
+        zIndex: 3000,
+        backgroundColor: "#fff",
+        border: "1px solid #ddd",
+        borderRadius: "8px",
+        padding: "10px",
+        width: "260px",
+        boxShadow: "0 2px 8px rgba(0,0,0,0.15)",
+        fontSize: "13px"
+      }}
+    >
+      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "8px" }}>
+        <span style={{ fontWeight: "bold" }}>Notifications</span>
+        <button onClick={dismissAllNotifications} style={{ fontSize: "11px", padding: "2px 6px", borderRadius: "4px", cursor: "pointer" }}>Dismiss All</button>
+      </div>
+      {visibleNotifications.length === 0 ? (
+        <div style={{ color: "#666", fontStyle: "italic" }}>No new notifications</div>
+      ) : (
+        <ul style={{ padding: 0, margin: 0, listStyleType: "none" }}>
+          {visibleNotifications.map((notif, index) => {
+            const [taskNameRaw, status] = notif.split(" is ");
+            const taskName = taskNameRaw.replace(/^"|"$/g, "");
+            const actualIndex = notifications.findIndex((n, i) => !dismissedIndices.has(i) && n === notif);
+            return (
+              <li key={index} style={{ display: "flex", alignItems: "center", marginBottom: "6px" }}>
+                <div
+                  style={{
+                    backgroundColor: "#f0f0f0",
+                    border: "1px solid #ddd",
+                    borderRadius: "6px",
+                    padding: "6px 8px",
+                    fontSize: "12px",
+                    flexGrow: 1,
+                    cursor: "pointer"
+                  }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setHighlightedTask(taskName);
+                  }}
+                >
+                  <div><strong>{taskName}</strong> <span style={{ fontSize: "12px" }}>is {status}</span></div>
+                </div>
+                <button
+                  onClick={() => dismissNotification(actualIndex)}
+                  style={{
+                    background: "none",
+                    border: "none",
+                    color: "#888",
+                    cursor: "pointer",
+                    fontSize: "12px",
+                    marginLeft: "6px"
+                  }}
+                  title="Dismiss"
+                >
+                  ✖
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </div>
+  );
+  
+  return (
+    <div>
+      {/* Notification Bell Button */}
+      {notificationsEnabled && (
+  <>
+    <div style={{ position: "absolute", top: "15px", left: "15px", zIndex: 2000 }}>
+      <button
+        onClick={() => setShowNotifications(prev => !prev)}
+        style={{
+          background: "none",
+          border: "none",
+          cursor: "pointer",
+          fontSize: "24px"
+        }}
+        title="Toggle Notifications"
+      >
+        🔔
+      </button>
+    </div>
+
+    {showNotifications && <NotificationPanel />}
+  </>
+)}
   
   return (
     <div>

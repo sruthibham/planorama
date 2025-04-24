@@ -989,3 +989,29 @@ button:hover {
   display: flex;
   gap: 5px;
 }
+
+.NotificationPanel {
+  background-color: #f8f8f8;
+  border: 1px solid #ccc;
+  padding: 10px;
+  margin: 15px 0;
+  border-radius: 8px;
+}
+.NotificationHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-weight: bold;
+}
+.NotificationList {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.NotificationList li {
+  padding: 4px 0;
+  cursor: pointer;
+}
+.NotificationList li:hover {
+  text-decoration: underline;
+}
