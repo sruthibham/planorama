@@ -12,6 +12,7 @@ import re
 from difflib import SequenceMatcher
 from sqlalchemy.ext.mutable import MutableList
 from datetime import datetime, timedelta, date
+from collections import defaultdict
 
 
 app = Flask(__name__)
@@ -746,14 +747,22 @@ def get_weekly_summary():
             except Exception as e:
                 print("BAD DATE:", task.completion_date, e)
 
+        daily_task_log_aggregates = defaultdict(lambda: defaultdict(int))
+
         for log in task.get_time_logs():
             try:
                 ts = datetime.fromisoformat(log["timestamp"])
                 if week_start <= ts <= week_end + timedelta(days=1):
                     day = ts.strftime("%A")
                     if day in day_stats:
+                        daily_task_log_aggregates[day][task.name] += log.get("minutes", 0)
                         day_stats[day]['minutes'] += log.get("minutes", 0)
-                        day_stats[day]['logs'].append({"task": task.name, "minutes": log["minutes"]})
+            except Exception as e:
+                print("Bad timestamp in log:", log, e)
+
+        for day, task_minutes in daily_task_log_aggregates.items():
+            for task_name, total_minutes in task_minutes.items():
+                day_stats[day]['logs'].append({"task": task_name, "minutes": total_minutes})
             except Exception as e:
                 print("Bad timestamp in log:", log, e)
 
