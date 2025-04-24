@@ -96,6 +96,7 @@ class Task(db.Model):
     completion_date = db.Column(db.String(50), nullable=True) 
     order_index = db.Column(db.Integer, nullable=False, default=0)
     dependencies = db.Column(db.Text, default="[]")
+    rollover_count = db.Column(db.Integer, default=0)
     estimated_time = db.Column(db.Integer, nullable=True)
 
     def get_dependencies(self):
@@ -157,6 +158,7 @@ def get_tasks():
         "subtasks": task.get_subtasks(),
         "order_index": task.order_index,
         "dependencies": task.get_dependencies(),
+        "rollover_count": task.rollover_count,
         "estimated_time": task.estimated_time
     } for task in tasks])
 
@@ -180,6 +182,7 @@ def get_scheduled_tasks():
         "subtasks": task.get_subtasks(),
         "order_index": task.order_index,
         "dependencies": task.get_dependencies(),
+        "rollover_count": task.rollover_count,
         "estimated_time": task.estimated_time
     } for task in tasks])
 
@@ -255,6 +258,7 @@ def add_task():
         start_date=start_date,
         completion_date=completion_date,
         order_index=max_index,
+        rollover_count=data["rollover_count"],
         estimated_time=estimated_time
     )
     new_task.set_subtasks(subtasks)
@@ -279,6 +283,7 @@ def add_task():
         "subtasks": new_task.get_subtasks(),
         "order_index": new_task.order_index,
         "dependencies": new_task.get_dependencies(),
+        "rollover_count": new_task.rollover_count,
         "estimated_time": new_task.estimated_time
     }}), 201
 
@@ -519,7 +524,8 @@ def update_task(task_id):
             "start_date": task.start_date,
             "time_logs": task.get_time_logs(), 
             "subtasks": task.get_subtasks(),
-            "dependencies": task.get_dependencies()
+            "dependencies": task.get_dependencies(),
+            "rollover_count": task.rollover_count
         }
     }), 200
 
@@ -633,7 +639,8 @@ def get_single_task(task_id):
         "status": task.status,
         "start_date": task.start_date,
         "time_logs": task.get_time_logs(),
-        "subtasks": task.get_subtasks()
+        "subtasks": task.get_subtasks(),
+        "rollover_count": task.rollover_count,
     }), 200
 
 
