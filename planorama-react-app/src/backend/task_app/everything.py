@@ -1,4 +1,3 @@
-from datetime import datetime, timedelta
 import os
 import re # Regex for password checking
 from werkzeug.utils import secure_filename
@@ -763,6 +762,38 @@ def get_weekly_summary():
         'most_productive': ", ".join(max_days) if max_days else None,
         'least_productive': ", ".join(min_days) if min_days else None
     })
+
+@app.route("/notifications")
+def get_notifications():
+    today = date.today()
+    notifications = []
+
+    username = request.args.get('username')
+    tasks = Task.query.filter(Task.user == username).all()
+
+    for task in tasks:
+        name = task.name
+        status = task.status
+        priority = task.priority
+        due_time = datetime.strptime(task.due_time, "%Y-%m-%d").date() if task.due_time else None
+        start_date = datetime.strptime(task.start_date, "%Y-%m-%d").date() if task.start_date else None
+
+        is_active = status != "Completed" and (
+            not start_date or start_date <= today or status == "In Progress"
+        )
+
+        is_overdue = status in ["To-Do", "In Progress"] and due_time and due_time < today
+
+        if is_active and due_time == today:
+            notifications.append(f'"{name}" is due today.')
+
+        if is_overdue:
+            notifications.append(f'"{name}" is overdue.')
+
+        if is_active and priority == "High":
+            notifications.append(f'"{name}" is a pending high priority task.')
+
+    return jsonify(notifications=notifications)
 
 with app.app_context():
        db.create_all()
