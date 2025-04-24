@@ -312,7 +312,8 @@ function TaskPage() {
     start_date: "",
     time_log: "", 
     subtasks: [],
-    completion_date: ""
+    completion_date: "",
+    estimated_time: ""
 
   });
   const [editingTask, setEditingTask] = useState(null);
@@ -334,6 +335,9 @@ function TaskPage() {
   const [isAddingSubtask, setIsAddingSubtask] = useState(false);
   const [draggingOverIndex, setDraggingOverIndex] = useState(null);
   const [draggingTaskId, setDraggingTaskId] = useState(null);
+  const [timeModalTask, setTimeModalTask] = useState(null);
+  const [filterTimePerformance, setFilterTimePerformance] = useState("None");
+
   const COLORS = [
     { name: "red", value: "#fbb9c5" },
     { name: "orange", value: "#fdd0b1" },
@@ -602,7 +606,9 @@ function TaskPage() {
           setTaskWarning(""); // Clear warning if it's valid
         }
       }
-  
+
+    
+      
       setEditingTask(updatedTask);
     } else {
       const updatedTask = { ...newTask, [name]: value };
@@ -618,6 +624,21 @@ function TaskPage() {
       }
   
       setNewTask(updatedTask);
+    }
+    if (name === "estimated_time") {
+      if (value === "") {
+        setError("Estimated time is required.");
+        return;
+      }
+      const num = parseInt(value);
+      if (isNaN(num)) {
+        setError("Estimated time must be a number.");
+        return;
+      }
+      if (num < 0) {
+        setError("Estimated time cannot be negative.");
+        return;
+      }
     }
   };
   
@@ -645,8 +666,8 @@ function TaskPage() {
       start_date: newTask.start_date,
       time_log: newTask.time_log, 
       subtasks: newTask.subtasks,
-      completion_date: newTask.status === "Completed" ? newTask.completion_date : null
-
+      completion_date: newTask.status === "Completed" ? newTask.completion_date : null,
+      estimated_time: newTask.estimated_time
     })
       .then(response => {
         const addedTask = response.data.task;
@@ -674,7 +695,8 @@ function TaskPage() {
           start_date: "",
           time_log: "", // Reset time log
           subtasks: [],
-          completion_date: ""
+          completion_date: "",
+          estimated_time: ""
         });
   
         setShowModal(false);
@@ -754,7 +776,8 @@ function TaskPage() {
       start_date: editingTask.start_date,
       time_log: editingTask.time_log,
       subtasks: editingTask.subtasks || [],
-      completion_date: editingTask.status === "Completed" ? editingTask.completion_date : null
+      completion_date: editingTask.status === "Completed" ? editingTask.completion_date : null,
+      estimated_time: editingTask ? editingTask.estimated_time : newTask.estimated_time
     })
       .then(response => {
         const updatedTask = response.data.task;
@@ -814,6 +837,17 @@ function TaskPage() {
     filteredTasks = filteredTasks.filter((task) => 
       task.color_tag === filterColor);
   }
+  if (filterTimePerformance !== "None") {
+    filteredTasks = filteredTasks.filter(task => {
+      const estimated = parseInt(task.estimated_time);
+      const actual = (task.time_logs || []).reduce((sum, log) => sum + (log.minutes || 0), 0);
+      if (isNaN(estimated)) return false;
+      if (filterTimePerformance === "Under Time") return actual < estimated;
+      if (filterTimePerformance === "Over Time") return actual > estimated;
+      if (filterTimePerformance === "On Time") return actual === estimated;
+      return true;
+    });
+  }
   const navigate = useNavigate()
 
   const handleMarkComplete = () => {
@@ -865,6 +899,15 @@ function TaskPage() {
             </select>
           </div>
           <div className="TaskCell">Deadline</div>
+          <div className="TaskCell">
+            Estimated Time
+            <select value={filterTimePerformance} onChange={(e) => setFilterTimePerformance(e.target.value)}>
+              <option value="None">None</option>
+              <option value="Under Time">Under Time</option>
+              <option value="On Time">On Time</option>
+              <option value="Over Time">Over Time</option>
+            </select>
+          </div>
           <div className="TaskCell">Time Spent</div>
           <div className="TaskCell">Dependencies</div>
           <div className="TaskCell">Make Changes</div>
@@ -1006,6 +1049,23 @@ function TaskPage() {
                           </div>
                           <div className="TaskCell">{formatDate(task.due_time)}</div>
                           
+                          <button
+                            className="SubtaskButton"
+                            onClick={() => setTimeModalTask(task)}
+                          >
+                            {(() => {
+                              const actual = (task.time_logs || []).reduce((sum, log) => sum + (log.minutes || 0), 0);
+                              const estimated = parseInt(task.estimated_time);
+                              if (isNaN(estimated)) return "No Estimate";
+
+                              const diff = actual - estimated;
+                              if (diff === 0) return "On Time";
+                              if (diff < 0) return `Under Time`;
+                              return `Over Time`;
+                            })()}
+                          </button>
+
+
                           <TaskTimeCell
                             task={task}
                             onLogClick={() => {
@@ -1227,6 +1287,32 @@ function TaskPage() {
           setSelectedTaskLogs={setSelectedTaskLogs}
         />
       )}
+      {timeModalTask && (
+        <div className="modal-overlay" onMouseDown={() => setTimeModalTask(null)}>
+          <div className="modal" onMouseDown={(e) => e.stopPropagation()}>
+            <h3>Time Performance</h3>
+            <p><strong>Estimated:</strong> {timeModalTask.estimated_time || "N/A"} min</p>
+            <p>
+              <strong>Actual:</strong>{" "}
+              {(timeModalTask.time_logs || []).reduce((sum, log) => sum + (log.minutes || 0), 0)} min
+            </p>
+            {timeModalTask.estimated_time && (() => {
+              const actual = (timeModalTask.time_logs || []).reduce((sum, log) => sum + (log.minutes || 0), 0);
+              const estimated = parseInt(timeModalTask.estimated_time);
+              const diff = actual - estimated;
+              let color = "gray";
+              if (diff > 0) color = "red";
+              else if (diff < 0) color = "green";
+              return (
+                <p style={{ color }}>
+                  {diff === 0 ? "On Time" : diff > 0 ? `Over by ${diff} min` : `Under by ${-diff} min`}
+                </p>
+              );
+            })()}
+            <button className="Buttons" onClick={() => setTimeModalTask(null)}>Close</button>
+          </div>
+        </div>
+      )}
 
       {showModal && (
         <div 
@@ -1255,7 +1341,8 @@ function TaskPage() {
                 status: "To-Do",
                 start_date: "",
                 time_log: "", 
-                subtasks: []
+                subtasks: [],
+                completion_date: ""
               });
               setNewSubtaskName("");
               setIsAddingSubtask(false);
@@ -1284,6 +1371,16 @@ function TaskPage() {
               onChange={handleChange} 
               className="TextFields" required 
             />
+            <label>Estimated Time</label>
+            <input
+              type="number"
+              name="estimated_time"
+              className="TextFields"
+              value={editingTask ? editingTask.estimated_time : newTask.estimated_time}
+              onChange={handleChange}
+            />
+
+
             {/* Added start_date input */}
             <label style={{ fontSize: "14px", marginTop: "10px" }}>Start Date (optional)</label>
             <input type="date" name="start_date" 

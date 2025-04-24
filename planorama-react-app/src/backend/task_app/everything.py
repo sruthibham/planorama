@@ -87,9 +87,10 @@ class Task(db.Model):
     rejected_suggestions = db.Column(MutableList.as_mutable(db.JSON), default=list)
     start_date = db.Column(db.String(50), nullable=True)  # New Field
     time_logs = db.Column(db.Text, default="[]", nullable=True)
-    completion_date = db.Column(db.String(50), nullable=True)  # <-- Add this field
+    completion_date = db.Column(db.String(50), nullable=True) 
     order_index = db.Column(db.Integer, nullable=False, default=0)
     dependencies = db.Column(db.Text, default="[]")
+    estimated_time = db.Column(db.Integer, nullable=True)
 
     def get_dependencies(self):
         try:
@@ -149,8 +150,10 @@ def get_tasks():
         "time_logs": task.get_time_logs(),
         "subtasks": task.get_subtasks(),
         "order_index": task.order_index,
-        "dependencies": task.get_dependencies()
+        "dependencies": task.get_dependencies(),
+        "estimated_time": task.estimated_time
     } for task in tasks])
+
 
 # Retrieve SCHEDULED tasks
 @app.route("/scheduled_tasks", methods=["GET"])
@@ -170,7 +173,8 @@ def get_scheduled_tasks():
         "time_logs": task.get_time_logs(),
         "subtasks": task.get_subtasks(),
         "order_index": task.order_index,
-        "dependencies": task.get_dependencies()
+        "dependencies": task.get_dependencies(),
+        "estimated_time": task.estimated_time
     } for task in tasks])
 
 @app.route("/tasks", methods=["POST"])
@@ -227,6 +231,13 @@ def add_task():
     else:
         max_index += 1
 
+    try:
+        estimated_time = float(data.get("estimated_time", 0))
+        if estimated_time < 0:
+            return jsonify({"error": "Estimated time cannot be negative"}), 400
+    except ValueError:
+        return jsonify({"error": "Estimated time must be a valid number"}), 400
+
     new_task = Task(
         user=data["username"],
         name=data["name"],
@@ -237,7 +248,8 @@ def add_task():
         status=data.get("status", "To-Do"),
         start_date=start_date,
         completion_date=completion_date,
-        order_index=max_index
+        order_index=max_index,
+        estimated_time=estimated_time
     )
     new_task.set_subtasks(subtasks)
 
@@ -260,7 +272,8 @@ def add_task():
         "time_logs": new_task.get_time_logs(), 
         "subtasks": new_task.get_subtasks(),
         "order_index": new_task.order_index,
-        "dependencies": new_task.get_dependencies()
+        "dependencies": new_task.get_dependencies(),
+        "estimated_time": new_task.estimated_time
     }}), 201
 
 @app.route("/tasks/reorder", methods=["POST"])
@@ -359,6 +372,37 @@ def rebuild_streak(username):
 
     db.session.commit()
 
+def task_to_dict(task):
+    actual_time = sum(log.minutes for log in task.time_logs)
+    estimated_time = task.estimated_time or 0
+    difference = actual_time - estimated_time
+
+    if difference > 0:
+        time_color = "red"
+    elif difference < 0:
+        time_color = "green"
+    else:
+        time_color = "gray"
+
+    return {
+        "id": task.id,
+        "name": task.name,
+        "description": task.description,
+        "due_time": task.due_time,
+        "priority": task.priority,
+        "color_tag": task.color_tag,
+        "status": task.status,
+        "start_date": task.start_date,
+        "completion_date": task.completion_date,
+        "estimated_time": estimated_time,
+        "actual_time": actual_time,
+        "time_difference": abs(difference),
+        "time_color": time_color,
+        "subtasks": [subtask.to_dict() for subtask in task.subtasks],
+        "time_logs": [log.to_dict() for log in task.time_logs]
+    }
+
+
 
 @app.route("/tasks/<int:task_id>", methods=["DELETE"])
 def delete_task(task_id):
@@ -412,6 +456,8 @@ def update_task(task_id):
     task.due_time = data.get("due_time", task.due_time)
     task.priority = data.get("priority", task.priority)
     task.color_tag = data.get("color_tag", task.color_tag)
+    task.estimated_time = data.get('estimated_time', task.estimated_time)
+
 
     if "time_logs" in data:
         task.set_time_logs(data["time_logs"])
@@ -1467,6 +1513,26 @@ def get_streak():
         "history": json.loads(streak.history)
     })
 
+@app.route("/tasks/<int:task_id>/time_summary", methods=["GET"])
+def get_time_summary(task_id):
+    task = Task.query.get(task_id)
+    if not task:
+        return jsonify({"error": "Task not found"}), 404
+
+    estimated = task.estimated_time or 0
+    actual = sum(log.minutes for log in task.time_logs) if task.time_logs else 0
+    diff = actual - estimated
+
+    return jsonify({
+        "estimated_time": estimated,
+        "actual_time": actual,
+        "difference": diff,
+        "status": (
+            "on time" if diff == 0 else
+            "under time" if diff < 0 else
+            "over time"
+        )
+    })
 
 
 if __name__ == "__main__":
