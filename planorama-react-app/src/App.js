@@ -312,8 +312,8 @@ function TaskPage() {
     start_date: "",
     time_log: "", 
     subtasks: [],
-    completion_date: ""
-
+    completion_date: "",
+    rollover_count: 0
   });
   const [editingTask, setEditingTask] = useState(null);
   //for filtering by priority
@@ -554,6 +554,43 @@ function TaskPage() {
 
   }
 
+  //for rolling over
+
+  const[originalRollColors, setOriginalRollColors] = useState(new Map());
+
+  const isOverdue = (deadline) => {
+    console.log("Deadline for task:", deadline)
+    const[year, month, day] = deadline.split('-').map(Number);
+    //subtract 1 because months start at 0
+    const due = new Date(year, month - 1, day);
+    const now = new Date();
+
+    console.log("New now deadline:", now);
+    console.log("due deadline:", due);
+
+    now.setHours(0, 0, 0, 0);
+    due.setHours(0, 0, 0, 0);
+    return now > due;
+  }
+
+  const handleRollOver = (taskId) => {
+
+    setTasks((prevTasks) =>
+      prevTasks.map((task) => {
+        if (task.id === taskId) {
+          const newDate = new Date(task.due_time);
+          newDate.setDate(newDate.getDate() + 1);
+          return {
+            ...task,
+            due_time: newDate.toISOString().split('T')[0],
+            rollover_count: task.rollover_count + 1,
+          }
+        }
+        return task;
+      })
+    );
+  }
+
   //for the colors before they were marked completed
   const[originalColors, setOriginalColors] = useState(new Map());
 
@@ -645,8 +682,8 @@ function TaskPage() {
       start_date: newTask.start_date,
       time_log: newTask.time_log, 
       subtasks: newTask.subtasks,
-      completion_date: newTask.status === "Completed" ? newTask.completion_date : null
-
+      completion_date: newTask.status === "Completed" ? newTask.completion_date : null,
+      rollover_count: newTask.rollover_count,
     })
       .then(response => {
         const addedTask = response.data.task;
@@ -674,7 +711,8 @@ function TaskPage() {
           start_date: "",
           time_log: "", // Reset time log
           subtasks: [],
-          completion_date: ""
+          completion_date: "",
+          rollover_count: 0
         });
   
         setShowModal(false);
@@ -721,7 +759,8 @@ function TaskPage() {
       start_date: null,
       time_logs: taskToFinish.time_logs || [],
       subtasks: taskToFinish.subtasks || [],
-      completion_date: today
+      completion_date: today,
+      rollover_count: taskToFinish.rollover_count,
     }).then(res => {
       setScheduledTasks(prev => prev.filter(t => t.id !== taskId));
       setTasks(prev => [...prev, res.data.task]);
@@ -754,7 +793,8 @@ function TaskPage() {
       start_date: editingTask.start_date,
       time_log: editingTask.time_log,
       subtasks: editingTask.subtasks || [],
-      completion_date: editingTask.status === "Completed" ? editingTask.completion_date : null
+      completion_date: editingTask.status === "Completed" ? editingTask.completion_date : null,
+      rollover_count: editingTask.rollover_count,
     })
       .then(response => {
         const updatedTask = response.data.task;
@@ -869,6 +909,7 @@ function TaskPage() {
           <div className="TaskCell">Dependencies</div>
           <div className="TaskCell">Make Changes</div>
           <div className="TaskCell">Notes</div>
+          <div className="TaskCell">Roll Over {/*also add the auto button here.*/}</div>
         </div>
 
         {taskWarning && (
@@ -950,7 +991,7 @@ function TaskPage() {
                           style={{
                             backgroundColor: snapshot.isDragging
                               ? "#e0e0e0"
-                              : task.color_tag || "#faf7f0",
+                              : (isOverdue(task.due_time) ? "#c46b60" : task.color_tag || "#faf7f0"),
                             ...provided.draggableProps.style,
                             boxShadow: snapshot.isDragging
                               ? "0 0 10px rgba(0,0,0,0.3)"
@@ -1036,6 +1077,16 @@ function TaskPage() {
                           </div>
                           <div className="TaskCell">{deleteButtons(task.id)}</div>
                           <div className="TaskCell">{<Notes />}</div>
+                          <div className="TaskCell">{
+                            <div>
+                              {console.log("True deadline:", task.due_time)}
+                              {console.log("Roll over count:", task.rollover_count)}
+                              <span># - {task.rollover_count}</span>
+                              {isOverdue(task.due_time) && (
+                                <button onClick={() => handleRollOver(task.id)}>Roll Over</button>
+                              )}
+                            </div>
+                            }</div>
                         </div>
                       )}
                     </Draggable>
@@ -2227,7 +2278,7 @@ const TeamPage = () => {
                       .map((c, index) => (
                         <div key={index}>
                           <div>{c.text}</div>
-                          <div>- {displayNames[c.user] || c.user} -</div>
+                          <div>- {team.display[c.user] || c.user} -</div>
                         </div>
                       ))}
                     </div> 
@@ -2655,6 +2706,55 @@ function Notes() {
 
       </div>
   );
+
+}
+
+function rollOver() {
+
+  //for rolling over
+
+  // const[originalRollColors, setOriginalRollColors] = useState(new Map());
+
+  // const isOverdue = (deadline) => {
+  //   const now = new Date();
+  //   const due = new Date(deadline);
+  //   return now > due;
+  // }
+
+  // const handleRollOver = (taskId) => {
+
+  //   setTasks((prevTasks) =>
+  //     prevTasks.map((task) => {
+  //       if (task.id === taskId) {
+  //         if (!originalRollColors.has(taskId)) {
+  //           setOriginalRollColors((prev) => prev.set(task.id, task.color_tag));
+  //           return {
+  //             ...task,
+  //             color_tag: "#FFE5E5",
+  //           };
+  //         } else {
+
+  //           const originalColor = originalRollColors.get(task.id);
+  //           return {
+  //             ...task,
+  //             color_tag: originalColor,
+  //           };
+  //         }
+  //       }
+  //       return task;
+  //     })
+  //   );
+  // }
+
+  // const overDue = isOverdue(task.deadline)
+
+  // return (
+  //   <div>
+  //     {/* {overdue && (
+  //       <button onClick={handleRollOver}>Roll Over</button>
+  //     )} */}
+  //   </div>
+  // )
 
 }
 

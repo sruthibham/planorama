@@ -90,6 +90,7 @@ class Task(db.Model):
     completion_date = db.Column(db.String(50), nullable=True)  # <-- Add this field
     order_index = db.Column(db.Integer, nullable=False, default=0)
     dependencies = db.Column(db.Text, default="[]")
+    rollover_count = db.Column(db.Integer, default=0)
 
     def get_dependencies(self):
         try:
@@ -149,7 +150,8 @@ def get_tasks():
         "time_logs": task.get_time_logs(),
         "subtasks": task.get_subtasks(),
         "order_index": task.order_index,
-        "dependencies": task.get_dependencies()
+        "dependencies": task.get_dependencies(),
+        "rollover_count": task.rollover_count
     } for task in tasks])
 
 # Retrieve SCHEDULED tasks
@@ -170,7 +172,8 @@ def get_scheduled_tasks():
         "time_logs": task.get_time_logs(),
         "subtasks": task.get_subtasks(),
         "order_index": task.order_index,
-        "dependencies": task.get_dependencies()
+        "dependencies": task.get_dependencies(),
+        "rollover_count": task.rollover_count
     } for task in tasks])
 
 @app.route("/tasks", methods=["POST"])
@@ -237,7 +240,8 @@ def add_task():
         status=data.get("status", "To-Do"),
         start_date=start_date,
         completion_date=completion_date,
-        order_index=max_index
+        order_index=max_index,
+        rollover_count=data["rollover_count"],
     )
     new_task.set_subtasks(subtasks)
 
@@ -260,7 +264,8 @@ def add_task():
         "time_logs": new_task.get_time_logs(), 
         "subtasks": new_task.get_subtasks(),
         "order_index": new_task.order_index,
-        "dependencies": new_task.get_dependencies()
+        "dependencies": new_task.get_dependencies(),
+        "rollover_count": new_task.rollover_count
     }}), 201
 
 @app.route("/tasks/reorder", methods=["POST"])
@@ -467,7 +472,8 @@ def update_task(task_id):
             "start_date": task.start_date,
             "time_logs": task.get_time_logs(), 
             "subtasks": task.get_subtasks(),
-            "dependencies": task.get_dependencies()
+            "dependencies": task.get_dependencies(),
+            "rollover_count": task.rollover_count
         }
     }), 200
 
@@ -581,7 +587,8 @@ def get_single_task(task_id):
         "status": task.status,
         "start_date": task.start_date,
         "time_logs": task.get_time_logs(),
-        "subtasks": task.get_subtasks()
+        "subtasks": task.get_subtasks(),
+        "rollover_count": task.rollover_count,
     }), 200
 
 

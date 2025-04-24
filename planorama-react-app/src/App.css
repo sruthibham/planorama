@@ -67,7 +67,7 @@ body {
 
 .TaskRow {
   display: grid;
-  grid-template-columns: 1fr 0.25fr 0.75fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr; /* Mark as Complete, Filter, Color, Task, Priority, Status, Deadline, Make Changes, notes */
+  grid-template-columns: 1fr 0.25fr 0.75fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr; /* Mark as Complete, Filter, Color, Task, Priority, Status, Deadline, Make Changes, Notes, Roll Over */
   align-items: center;
   padding: 10px;
   border-bottom: 1px solid #ccc;
