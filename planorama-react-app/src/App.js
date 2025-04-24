@@ -1894,6 +1894,7 @@ const TeamPage = () => {
   const [ showDisplay, setShowDisplay ] = useState(null);
 
   const [ commentText, setCommentText ] = useState("");
+  
   const [ activeComment, setActiveComment] = useState("");
   const [ comments, setComments ] = useState([]);
   const [ activeMenu, setActiveMenu ] = useState("");
@@ -2070,27 +2071,28 @@ const TeamPage = () => {
   }
 
   const handleSetDisplay = (member) => {
-    //axios.post("http://127.0.0.1:5000/setdisplayname", {teamID: teamID, username: member, displayName: displayName})
-    //.then(() => {
+    axios.post("http://127.0.0.1:5000/setdisplayname", {teamID: teamID, username: member, displayName: displayName})
+    .then(() => {
       setDisplayNames(prev => ({
         ...prev,
         [member]: displayName,
+        
       }));
 
       setShowDisplay(null);
       setDisplayName("");
-      //return axios.get(`http://127.0.0.1:5000/getteam?teamID=${teamID}`)
-    //})
-    //.then(response => {
-      //setTeam(response.data);
-    //})
+      return axios.get(`http://127.0.0.1:5000/getteam?teamID=${teamID}`)
+    })
+    .then(response => {
+      setTeam(response.data);
+    })
 
     
   }
 
   const handleResetDisplay = (member) => {
-    //axios.post("http://127.0.0.1:5000/resetdisplayname", {teamID: teamID, username: member, displayName: member})
-    //.then(() => {
+    axios.post("http://127.0.0.1:5000/resetdisplayname", {teamID: teamID, username: member, displayName: member})
+    .then(() => {
       setDisplayNames(prev => ({
         ...prev,
         [member]: member,
@@ -2098,11 +2100,11 @@ const TeamPage = () => {
 
       setShowDisplay(null);
       setDisplayName("");
-      //return axios.get(`http://127.0.0.1:5000/getteam?teamID=${teamID}`)
-    //})
-    //.then(response => {
-      //setTeam(response.data);
-    //})
+      return axios.get(`http://127.0.0.1:5000/getteam?teamID=${teamID}`)
+    })
+    .then(response => {
+      setTeam(response.data);
+    })
   }
 
   if (!team) return <h3 className='Headers'>Loading team...</h3>;
@@ -2122,7 +2124,7 @@ const TeamPage = () => {
             <div className='SideBySide'>
               <div className='ChangeDisplay'>
                 <li key={index}>
-                  {displayNames[member] || member}
+                  {team.display[member] || member}
                   {user === member && <button onClick={() => handleChangeDisplay(member)} style={{marginBottom:20}}>Change Display Name</button>}
                 </li>
               </div>
@@ -2137,7 +2139,7 @@ const TeamPage = () => {
                   className='DisplayBar'
                 />
                 )}
-                { user === member && showDisplay && /*displayName !== "" &&  */(
+                { user === member && showDisplay && displayName !== "" && (
                   <div className='SetButtons'>
                     {<button className='SetDisplayName' onClick={() => handleSetDisplay(member)}>Set</button>}
                     {<button className='SetResetName' onClick={() => handleResetDisplay(member)}>Reset</button>}
@@ -2184,6 +2186,7 @@ const TeamPage = () => {
 
       <h2 className='Headers' style={{marginTop:10}}>Tasks<button onClick={()=>setShowModal(true)}>Create Task</button></h2>
       <div className='Columns' style={{marginTop:10, backgroundColor:"lightgrey"}}>
+        <h4>Mark as Complete</h4>
         <h3>Task</h3>
         <h3>Deadline</h3>
         <h3>Assigned to</h3>
@@ -2193,9 +2196,10 @@ const TeamPage = () => {
       <div>
         {team.tasks.map((task, index) => (
           <div key={index} className='Columns'>
+            <button className="Invite" style={{margin:'auto'}}>✓</button>
             <h4>{task.taskName}</h4>
             <h4>{task.deadline}</h4>
-            <h4>{task.assignee !== "" ? (displayNames[task.assignee] || task.assignee) : "Unassigned"}</h4>
+            <h4>{task.assignee !== "" ? (team.display[task.assignee] || task.assignee) : "Unassigned"}</h4>
             {user === team.owner && (
                 <div style={{display:'flex', justifySelf:"center", gap:5}}>
                   {task.assignee === "" && <button className="Invite" style={{margin:"auto", width: 58, height: 30}} onClick={() => handleList(task.taskName)}>Assign</button>}
@@ -2233,12 +2237,12 @@ const TeamPage = () => {
             )}
             {user !== team.owner && task.assignee === "" && <button className="Invite" style={{margin:"auto", width: 58, height: 30}} onClick={() => handleClaim(task.taskName, user)}>Claim</button>}
             {user !== team.owner && task.assignee === user && <button className="Invite" style={{margin:"auto", width: 64, height: 30}} onClick={() => handleClaim(task.taskName, user)}>Unclaim</button>}
-            {showList && currentOpen === task.taskName && (<><div></div><div></div><div></div>
+            {showList && currentOpen === task.taskName && (<><div></div><div></div><div></div><div></div>
               <div>
                 {team.members.map((member, index) => (
                   <div key={index} className="Column">
                     <div className="user-row">
-                      {displayNames[member] || member}
+                      {team.display[member] || member}
                       <button className='Invite' style={{width:60}} onClick={() => {handleClaim(task.taskName, member); handleList(task.taskName)}}>Choose</button>
                     </div>
                   </div>

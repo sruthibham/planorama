@@ -1098,10 +1098,7 @@ class Teams(db.Model):
     recipients = db.Column(db.Text, nullable=True)
     tasks = db.Column(db.Text, nullable=True)
 
-    """
     displayNames = db.Column(db.Text, nullable=True)
-
-    
 
     def get_display_name(self):
         return json.loads(self.displayNames) if self.displayNames else {}
@@ -1109,12 +1106,17 @@ class Teams(db.Model):
     def set_display_name(self, username, display_name):
         try:
             display_names = self.get_display_name()
+            print("ITSHERE", display_names.get(username))
+
             display_names[username] = display_name
+            print(display_names.get(username))
             self.displayNames = json.dumps(display_names)
             db.session.commit()
         except Exception as e:
+            print("ERRORHERE", display_names)
+            print(e)
             db.session.rollback()
-            #return jsonify({"error", "failed to set display name", "message"}), 500
+            return jsonify({"error", "failed to set display name", "message"}), 500
 
 
     def reset_display_name(self, username, display_name):
@@ -1126,9 +1128,9 @@ class Teams(db.Model):
                 db.session.commit()
         except Exception as e:
             db.session.rollback()
-            #return jsonify({"error", "failed to set display name", "message"}), 500
+            return jsonify({"error", "failed to set display name", "message"}), 500
 
-    """
+    
 
     def get_members(self):
         return json.loads(self.members) if self.members else []
@@ -1216,7 +1218,7 @@ def getTeams():
         "members": team.get_members(),
         "recipients": team.get_recipients(),
         "tasks": team.get_tasks(),
-        #"display": team.get_display_name()
+        "display": team.get_display_name()
     } for team in user_teams])
 
 # Get all teams that user has an invite to
@@ -1233,7 +1235,7 @@ def getInvites():
         "members": team.get_members(),
         "recipients": team.get_recipients(),
         "tasks": team.get_tasks(),
-        #"display": team.get_display_name()
+        "display": team.get_display_name()
     } for team in user_invites])
 
 # Get the information of a team based on ID
@@ -1249,7 +1251,7 @@ def getTeamFromID():
         "members": team.get_members(),
         "recipients": team.get_recipients(),
         "tasks": team.get_tasks(),
-        #"display": team.get_display_name()
+        "display": team.get_display_name()
     })
 
 # Get profile information based on username
@@ -1396,7 +1398,7 @@ def claimTask():
     
     return jsonify(team.get_tasks())
 
-"""
+
 
 #sets the users display name
 @app.route("/setdisplayname", methods=["POST"])
@@ -1416,7 +1418,8 @@ def setDisplayName():
             return jsonify({"error": "Failed to display name"})
         
     except Exception as e:
-        return jsonify({"error", str(e)}), 500
+        print(str(e))
+        return jsonify({"error": str(e)}), 500
 
 #resets the users display name
 @app.route("/resetdisplayname", methods=["POST"])
@@ -1437,7 +1440,7 @@ def resetDisplayName():
     except Exception as e:
         return jsonify({"error", str(e)}), 500
 
-"""
+
     
 # STREAK.PY ------------------------------------
 class UserStreak(db.Model):
