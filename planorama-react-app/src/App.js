@@ -1894,8 +1894,9 @@ const TeamPage = () => {
   const [ showDisplay, setShowDisplay ] = useState(null);
 
   const [ commentText, setCommentText ] = useState("");
-  const [ commentingOnTask, setCommentingOnTask ] = useState(null);
-  //const [ showDisplay, setShowDisplay ] = useState(null);
+  const [ activeComment, setActiveComment] = useState("");
+  const [ comments, setComments ] = useState([]);
+  const [ activeMenu, setActiveMenu ] = useState("");
 
   const handleList = (curr) => {
     if (showList === true && curr === currentOpen) {
@@ -2039,8 +2040,33 @@ const TeamPage = () => {
   }
 
   const handleCommentTask = (task_name) => {
+    if (activeComment === task_name) {
+      setActiveComment(null);
+    } else {
+      setActiveComment(task_name);
 
+    }
+  }
+
+  const handleSaveComment = (taskName, currentUser) => {
     
+    const newComment = {
+      taskName,
+      text: commentText,
+      user: currentUser
+    }
+
+    setComments([...comments, newComment]);
+    setCommentText("");
+    setActiveComment(null);
+  }
+
+  const handleMenuClick = (taskName) => {
+    if (activeMenu === taskName) {
+      setActiveMenu(null);
+    } else {
+      setActiveMenu(taskName);
+    }
   }
 
   const handleSetDisplay = (member) => {
@@ -2053,6 +2079,10 @@ const TeamPage = () => {
 
       setShowDisplay(null);
       setDisplayName("");
+      //return axios.get(`http://127.0.0.1:5000/getteam?teamID=${teamID}`)
+    //})
+    //.then(response => {
+      //setTeam(response.data);
     //})
 
     
@@ -2068,6 +2098,10 @@ const TeamPage = () => {
 
       setShowDisplay(null);
       setDisplayName("");
+      //return axios.get(`http://127.0.0.1:5000/getteam?teamID=${teamID}`)
+    //})
+    //.then(response => {
+      //setTeam(response.data);
     //})
   }
 
@@ -2167,7 +2201,34 @@ const TeamPage = () => {
                   {task.assignee === "" && <button className="Invite" style={{margin:"auto", width: 58, height: 30}} onClick={() => handleList(task.taskName)}>Assign</button>}
                   {task.assignee !== "" && <button className="Invite" style={{margin:"auto", width: 80, height: 30}} onClick={() => handleClaim(task.taskName, task.assignee)}>Unnassign</button>}
                   <button className="Invite" style={{margin:"auto", backgroundColor:"red"}} onClick={() => handleDeleteTask(task.taskName)}>Delete</button>
-                  <button className="Comment" style={{margin:"auto", backgroundColor:"orange"}} onClick={() => handleCommentTask(task.taskName)}>Comment</button>                  
+
+                  <button className="Comment" style={{margin:"auto"}} onClick={() => handleCommentTask(task.taskName)}>Comment</button>
+
+                  {activeComment === task.taskName && (
+                    <div>
+                      <textarea
+                        value={commentText}
+                        onChange={(e) => setCommentText(e.target.value)}
+                        placeholder='Write comment...'
+                      />
+                        <button className="SaveComment" onClick={() => handleSaveComment(task.taskName, user)}>Save</button>
+                    </div>
+                  )} 
+
+                  <button onClick={() => handleMenuClick(task.taskName)}>:</button>
+
+                  {activeMenu === task.taskName &&
+                    <div>
+                      {comments.filter((c) => c.taskName === task.taskName)
+                      .map((c, index) => (
+                        <div key={index}>
+                          <div>{c.text}</div>
+                          <div>- {displayNames[c.user] || c.user} -</div>
+                        </div>
+                      ))}
+                    </div> 
+                  }      
+                            
                 </div>
             )}
             {user !== team.owner && task.assignee === "" && <button className="Invite" style={{margin:"auto", width: 58, height: 30}} onClick={() => handleClaim(task.taskName, user)}>Claim</button>}
