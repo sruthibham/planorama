@@ -945,30 +945,6 @@ function TaskPage() {
     sessionStorage.setItem("notificationsEnabled", notificationsEnabled);
   }, [notificationsEnabled]);
 
-  useEffect(() => {
-    if (!notificationsEnabled || user === "Guest") return;
-  
-    const fetchNotifications = () => {
-      axios.get(`http://127.0.0.1:5000/notifications?username=${user}`)
-        .then(res => {
-          const newNotifs = res.data.notifications || [];
-          setNotifications((prev) => {
-            const combined = [...new Set([...prev, ...newNotifs])];
-            return combined;
-          });
-        })
-        .catch(err => console.error("Error fetching dynamic notifications:", err));
-    };
-  
-    // Run immediately on mount
-    fetchNotifications();
-  
-    // Poll every 20s
-    const interval = setInterval(fetchNotifications, 20000);
-  
-    return () => clearInterval(interval);
-  }, [notificationsEnabled, user]);
-
   const NotificationPanel = () => (
     <div
       className="NotificationPanel"
