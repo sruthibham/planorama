@@ -2111,7 +2111,7 @@ const TeamPage = () => {
                   className='DisplayBar'
                 />
                 )}
-                { user === member && showDisplay && displayName !== "" && (
+                { user === member && showDisplay /*&& displayName !== ""*/ && (
                   <div className='SetButtons'>
                     {<button className='SetDisplayName' onClick={() => handleSetDisplay(member)}>Set</button>}
                     {<button className='SetResetName' onClick={() => handleResetDisplay(member)}>Reset</button>}
