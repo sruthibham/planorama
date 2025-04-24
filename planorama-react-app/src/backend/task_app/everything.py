@@ -816,13 +816,13 @@ def get_notifications():
 
         is_overdue = status in ["To-Do", "In Progress"] and due_time and due_time < today
 
-        if is_active and due_time == today:
-            notifications.append({"id": task.id, "message": f'"{name}" is due today.'})
-
         if is_overdue:
             notifications.append({"id": task.id, "message": f'"{name}" is overdue.'})
+        
+        elif is_active and due_time == today:
+            notifications.append({"id": task.id, "message": f'"{name}" is due today.'})
 
-        if is_active and priority == "High":
+        elif is_active and priority == "High":
             notifications.append({"id": task.id, "message": f'"{name}" is a pending high priority task.'})
 
     return jsonify(notifications=notifications)
