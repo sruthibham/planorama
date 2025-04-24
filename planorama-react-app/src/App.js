@@ -1000,7 +1000,6 @@ function TaskPage() {
   
   return (
     <div>
-      {/* Notification Bell Button */}
       {notificationsEnabled && (
   <>
     <div style={{ position: "absolute", top: "15px", left: "15px", zIndex: 2000 }}>
@@ -1021,9 +1020,6 @@ function TaskPage() {
     {showNotifications && <NotificationPanel />}
   </>
 )}
-  
-  return (
-    <div>
       <h1 className="App">Your Tasks</h1>
       {/* Active Tasks Section */}
       <h2>Active Tasks</h2>
