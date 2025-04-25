@@ -1888,6 +1888,7 @@ const TeamPage = () => {
   const [ errorMsg, setErrorMsg ] = useState("");
   const [ showList, setShowList ] = useState(false);
   const [ currentOpen, setCurrentOpen ] = useState("");
+  const [ showCompleted, setShowCompleted ] =  useState(false);
 
   const [ displayName, setDisplayName ] = useState("");
   const [ displayNames, setDisplayNames ] = useState({});
@@ -1923,6 +1924,14 @@ const TeamPage = () => {
       setShowConfirm(false);
     } else {
       setShowConfirm(true);
+    }
+  }
+
+  const handleExpand = () => {
+    if (showCompleted) {
+      setShowCompleted(false);
+    } else {
+      setShowCompleted(true);
     }
   }
 
@@ -2028,6 +2037,39 @@ const TeamPage = () => {
 
   }
 
+  const handleComplete = (task_name, clickedBy) => {
+    axios.post("http://127.0.0.1:5000/completetask", {teamID: teamID, user: clickedBy, taskName: task_name})
+    .then(() => {
+      return axios.get(`http://127.0.0.1:5000/getteam?teamID=${teamID}`)
+    })
+    .then(response => {
+      setTeam(response.data);
+    })
+
+  }
+
+  const handleReopen = (task_name, clickedBy) => {
+    axios.post("http://127.0.0.1:5000/reopentask", {teamID: teamID, user: clickedBy, taskName: task_name})
+    .then(() => {
+      return axios.get(`http://127.0.0.1:5000/getteam?teamID=${teamID}`)
+    })
+    .then(response => {
+      setTeam(response.data);
+    })
+
+  }
+
+  const handleDeleteCompleted = (task_name) => {
+    axios.post("http://127.0.0.1:5000/deletecompletedtask", {teamID: teamID, taskName: task_name})
+    .then(() => {
+      return axios.get(`http://127.0.0.1:5000/getteam?teamID=${teamID}`)
+    })
+    .then(response => {
+      setTeam(response.data);
+    })
+
+  }
+
   const handleChangeDisplay = (member) => {
     if (showDisplay === member) {
       setShowDisplay(null);
@@ -2097,7 +2139,7 @@ const TeamPage = () => {
               <div className='ChangeDisplay'>
                 <li key={index}>
                   {team.display[member] || member}
-                  {user === member && <button onClick={() => handleChangeDisplay(member)} style={{marginBottom:20}}>Change Display Name</button>}
+                  {user === member && <button onClick={() => handleChangeDisplay(member)} style={{marginLeft:20, padding:5}}>Change Display Name</button>}
                 </li>
               </div>
               <div className='ChangeDisplay'>
@@ -2168,7 +2210,7 @@ const TeamPage = () => {
       <div>
         {team.tasks.map((task, index) => (
           <div key={index} className='Columns'>
-            <button className="Invite" style={{margin:'auto'}}>✓</button>
+            <button className="Invite" style={{margin:'auto'}} onClick={() => handleComplete(task.taskName, user)}>✓</button>
             <h4>{task.taskName}</h4>
             <h4>{task.deadline}</h4>
             <h4>{task.assignee !== "" ? (team.display[task.assignee] || task.assignee) : "Unassigned"}</h4>
@@ -2198,6 +2240,33 @@ const TeamPage = () => {
 
           </div>
         ))}
+        <h2 className='Headers' style={{marginTop:10, justifyContent:'left'}}>Completed<button style={{marginLeft:10, width:30, height:30, padding:0}} onClick={handleExpand}>{showCompleted===true ? "▲" : "▼"}</button></h2>
+
+        { showCompleted && (<>
+          <div className='Columns' style={{marginTop:10, backgroundColor:"lightgrey"}}>
+            <h4>Mark incomplete</h4>
+            <h3>Task</h3>
+            <h3>Deadline</h3>
+            <h3>Completed by</h3>
+            <h4>Options</h4>
+
+          </div>
+          {team.completed && team.completed.length === 0 ? <h3 className='Columns'>No completed tasks</h3> : null}
+          {team.completed.map((completed, index) => (
+            <div key={index} className='Columns'>
+              <button className="Invite" style={{margin:'auto', fontSize:30, width:35, paddingBottom:5}} onClick={() => handleReopen(completed.taskName, user)}>↻</button>
+              <h4>{completed.taskName}</h4>
+              <h4>{completed.deadline}</h4>
+              <h4>{completed.assignee !== "" ? (team.display[completed.assignee] || completed.assignee) : "Unassigned"}</h4>
+              <button className="Invite" style={{margin:"auto", backgroundColor:"red"}} onClick={() => handleDeleteCompleted(completed.taskName)}>Delete</button>
+            </div>
+          ))}
+          
+          
+          </>
+        )}
+        
+
       </div>
 
       {showModal && (
