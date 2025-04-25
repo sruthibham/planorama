@@ -12,6 +12,7 @@ import { useRef } from 'react';
 import axios from 'axios';
 import React from 'react';
 import StreakTracker from './StreakTracker';
+import ProductivityPage from './ProductivityPage';
 
 const resizeObserverErrorHandler = (e) => {
   if (e.message.includes("ResizeObserver loop completed with undelivered notifications")) {
@@ -3046,6 +3047,7 @@ function NavigationButtons() {
       <button className='Buttons' style={{marginLeft: 5}} onClick={() => navigate('/gensearch')}>Search</button>
       <button className='Buttons' style={{marginLeft: 5}} onClick={() => navigate('/templates')}>Templates</button>
       <button className='Buttons' style={{marginLeft: 5}} onClick={() => navigate('/archive')}>Archive</button>
+      <button className='Buttons' style={{marginLeft: 5}} onClick={() => navigate('/productivity')}>Productivity</button>
       <div className="SettingsButton" onClick={() => navigate('/settings')}> 
         <IoSettingsOutline />
       </div>
@@ -3075,6 +3077,7 @@ function App() {
             <Route path="/archive" element={<ArchivePage />} />
             <Route path="/gensearch" element={<SearchPage />} />
             <Route path="/dependencies" element={<TaskDependenciesPage />} />
+            <Route path="/productivity" element={<ProductivityPage />} />
           </Routes>
         </GlobalProvider>
     </Router>

@@ -761,8 +761,9 @@ def get_weekly_summary():
                 print("Bad timestamp in log:", log, e)
 
         for day, task_minutes in daily_task_log_aggregates.items():
-            for task_name, total_minutes in task_minutes.items():
-                day_stats[day]['logs'].append({"task": task_name, "minutes": total_minutes})
+            try:
+                for task_name, total_minutes in task_minutes.items():
+                    day_stats[day]['logs'].append({"task": task_name, "minutes": total_minutes})
             except Exception as e:
                 print("Bad timestamp in log:", log, e)
 
@@ -1596,6 +1597,40 @@ def get_time_summary(task_id):
             "over time"
         )
     })
+# ---------------------- PRODUCTIVITY TRACKING ----------------------
+class ProductivityLog(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    username = db.Column(db.String(64), nullable=False)
+    minutes = db.Column(db.Integer, nullable=False)
+    timestamp = db.Column(db.String(50), nullable=False)
+
+with app.app_context():
+    db.create_all()
+
+@app.route("/productivity/log", methods=["POST"])
+def log_productivity_time():
+    data = request.json
+    minutes = data.get("minutes")
+    timestamp = data.get("date")
+    username = currentUser
+
+    if not minutes or not timestamp:
+        return jsonify({'error': 'Missing data'}), 400
+
+    log = ProductivityLog(username=username, minutes=minutes, timestamp=timestamp)
+    db.session.add(log)
+    db.session.commit()
+    return jsonify({"message": "Time logged successfully"})
+
+
+@app.route("/productivity/all", methods=["GET"])
+def get_all_productivity_data():
+    username = currentUser
+    logs = ProductivityLog.query.filter_by(username=username).all()
+    return jsonify([
+        {"minutes": log.minutes, "timestamp": log.timestamp}
+        for log in logs
+    ])
 
 
 if __name__ == "__main__":
