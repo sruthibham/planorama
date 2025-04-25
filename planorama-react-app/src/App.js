@@ -1638,6 +1638,7 @@ const openNewTemplateForm = () => {
 
         
         <button className="TemplateButton" onClick={() => setShowTemplateModal(true)}>Templates</button>
+        <button className="TemplateButton">Most Recent</button>
 
         {showTemplateModal && (
           <div className="Modal">
@@ -1655,6 +1656,12 @@ const openNewTemplateForm = () => {
                   taskTemplates.map((template) => (
                     <div key={template.id} className="TemplateCard">
                       <div className="TemplateInfo">
+                        <div>
+                          Favorite:
+                          <input
+                            type={"checkbox"}
+                          />
+                        </div>
                         <h4 className="TemplateName">{template.name}</h4>
                         {template.description && (
                           <p className="TemplateDescription">{template.description}</p>
@@ -3024,7 +3031,7 @@ const TeamPage = () => {
                             <div>- {team.display[comment.user] || comment.user} -</div>
 
                             {comment.user === user && (
-                              <button className="DeleteButton" onClick={() => handleDeleteComment(comment.taskName, comment.index)}>
+                              <button className="DeleteButton" onClick={() => handleDeleteComment(task.taskName, index)}>
                                 Delete
                               </button>
                             )}

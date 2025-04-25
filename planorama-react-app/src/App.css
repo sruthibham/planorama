@@ -328,6 +328,20 @@ body {
   cursor: pointer;
 }
 
+.TemplateButton {
+  padding: 5px 10px;
+  border: none;
+  background-color: #f5a742;
+  color: white;
+  cursor: pointer;
+  border-radius: 5px;
+  margin: 5px;
+}
+
+.TemplateButton:hover {
+  background-color: #f69e2b;
+}
+
 .MakeTaskButton {
   display: block;
   margin: 20px auto;
