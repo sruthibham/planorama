@@ -2472,7 +2472,7 @@ const TeamPage = () => {
               <div className='ChangeDisplay'>
                 { user === member && showDisplay === member && (
                   <input
-                  style={{marginRight: 10}}
+                  style={{marginRight: 10, marginTop:5}}
                   type="text"
                   placeholder="Change Display Name..."
                   value={displayName}
@@ -2493,7 +2493,7 @@ const TeamPage = () => {
       </div>
 
       <div className='SideBySide'>
-        <div className='AddMember'>
+        <div className='AddMember' style={{display:'flex', flexDirection:"column"}}>
           { user === team.owner && showSearch && (
             <input
               style={{marginRight: 10}}
@@ -2559,10 +2559,10 @@ const TeamPage = () => {
         </div>
       )}
       { user === team.owner && showConfirm && (
-        <div>
-          <p className='AddMember' style={{"marginTop":20}}>Are you sure? Team will be deleted for all members.</p>
-          <div className='AddMember'>
-            <button style={{"marginTop":10, backgroundColor:"red"}} onClick={handleDelete}>Confirm</button>
+        <div className='DTText'>
+          <p style={{"marginTop":20}}>Are you sure? Team will be deleted for all members.</p>
+          <div>
+            <button style={{"marginLeft":10, backgroundColor:"red"}} onClick={handleDelete}>Confirm</button>
             <button style={{"marginLeft":10, marginTop:10}} onClick={handleOpenConfirm}>Cancel</button>
           </div>
         </div>
