@@ -867,6 +867,37 @@ button:hover {
   cursor: pointer;
 }
 
+.CommentBox {
+  margin-top: 8px;
+  background-color: #f1f1f1;
+  padding: 10px;
+  border-radius: 6px;
+  max-width: 300px;
+  max-height: 150px;
+  overflow-y: auto;
+}
+
+.CommentDisplay {
+  margin-bottom: 6px;
+  background-color: #ffffff;
+  padding: 6px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+}
+
+.CommentInput {
+  display: flex;
+  flex-direction: column;
+  margin-top: 5px;
+}
+
+.CommentInput textarea {
+  resize: vertical;
+  padding: 6px;
+  font-size: 14px;
+  width: 200px;
+}
+
 /* display name styling */
 
 .DisplayBar {

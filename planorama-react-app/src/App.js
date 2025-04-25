@@ -2547,6 +2547,10 @@ const TeamPage = () => {
     }
   }
 
+  const handleDeleteComment = () => {
+    
+  }
+
   /*
   const handleSaveComment = (taskName, currentUser) => {
     
@@ -2758,15 +2762,18 @@ const TeamPage = () => {
             <h4>{task.deadline}</h4>
             <h4>{task.assignee !== "" ? (team.display[task.assignee] || task.assignee) : "Unassigned"}</h4>
             {user === team.owner && (
-                <div style={{display:'flex', justifySelf:"center", gap:5}}>
+                <div style={{display: 'flex', flexDirection: 'column', gap: '5px', alignItems: 'center', width: '100%'}}>
                   {task.assignee === "" && <button className="Invite" style={{margin:"auto", width: 58, height: 30}} onClick={() => handleList(task.taskName)}>Assign</button>}
                   {task.assignee !== "" && <button className="Invite" style={{margin:"auto", width: 80, height: 30}} onClick={() => handleClaim(task.taskName, task.assignee)}>Unnassign</button>}
                   <button className="Invite" style={{margin:"auto", backgroundColor:"red"}} onClick={() => handleDeleteTask(task.taskName)}>Delete</button>
 
-                  <button className="Comment" style={{margin:"auto"}} onClick={() => handleCommentTask(task.taskName)}>Comment</button>
+                  <div style={{ display: 'flex', gap: '5px', justifyContent: 'center', flexWrap: 'wrap'}}>
+                    <button className="Comment" style={{margin:"auto"}} onClick={() => handleCommentTask(task.taskName)}>Comment</button>
+                    <button className="SeeComments" onClick={() => handleMenuClick(task.taskName)}>:</button>
+                  </div>
 
                   {activeComment === task.taskName && (
-                    <div>
+                    <div className="CommentInput">
                       <textarea
                         value={commentText}
                         onChange={(e) => setCommentText(e.target.value)}
@@ -2776,16 +2783,22 @@ const TeamPage = () => {
                     </div>
                   )} 
 
-                  <button className="SeeComments" onClick={() => handleMenuClick(task.taskName)}>:</button>
+                  
 
                   {activeMenu === task.taskName &&
-                    <div>
+                    <div className="CommentBox">
                       {comments && comments.length > 0 ?
                         comments.filter((c) => c.taskName === task.taskName)
                         .map((comment, index) => (
-                          <div key={index}>
+                          <div key={index} className="CommentDisplay">
                             <div>{comment.text}</div>
                             <div>- {team.display[comment.user] || comment.user} -</div>
+
+                            {comment.user === user && (
+                              <button className="DeleteButton" onClick={() => handleDeleteComment(task.taskName, index)}>
+                                Delete
+                              </button>
+                            )}
                           </div>
                         ))
                         :
@@ -2796,39 +2809,43 @@ const TeamPage = () => {
                             
                 </div>
             )}
-            {user !== team.owner && task.assignee === "" && <button className="Invite" style={{margin:"auto", width: 58, height: 30}} onClick={() => handleClaim(task.taskName, user)}>Claim</button>}
-            {user !== team.owner && task.assignee === user && <button className="Invite" style={{margin:"auto", width: 64, height: 30}} onClick={() => handleClaim(task.taskName, user)}>Unclaim</button>}
-            {user !== team.owner && (
-                <div style={{display:'flex', justifySelf:"center", gap:5}}>
-                  <button className="Comment" style={{margin:"auto"}} onClick={() => handleCommentTask(task.taskName)}>Comment</button>
+            <div style={{display: 'flex', justifyContent: 'center', gap: '5px', alignItems: 'center', flexWrap: 'wrap'}}>
+              {user !== team.owner && task.assignee === "" && <button className="Invite" style={{margin:"auto", width: 58, height: 30}} onClick={() => handleClaim(task.taskName, user)}>Claim</button>}
+              {user !== team.owner && task.assignee === user && <button className="Invite" style={{margin:"auto", width: 64, height: 30}} onClick={() => handleClaim(task.taskName, user)}>Unclaim</button>}
+              {user !== team.owner && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '5px', alignItems: 'center', width: '100%' }}>
 
-                  {activeComment === task.taskName && (
-                    <div>
-                      <textarea
-                        value={commentText}
-                        onChange={(e) => setCommentText(e.target.value)}
-                        placeholder='Write comment...'
-                      />
-                        <button className="SaveComment" onClick={() => handleSaveComment(task.taskName, user)}>Save</button>
+                    <div style={{ display: 'flex', gap: '5px', justifyContent: 'center', flexWrap: 'wrap'}}>
+                      <button className="Comment" style={{margin:"auto"}} onClick={() => handleCommentTask(task.taskName)}>Comment</button>
+                      <button className="SeeComments" onClick={() => handleMenuClick(task.taskName)}>:</button>
                     </div>
-                  )} 
 
-                  <button className="SeeComments" onClick={() => handleMenuClick(task.taskName)}>:</button>
+                    {activeComment === task.taskName && (
+                      <div className="CommentInput">
+                        <textarea
+                          value={commentText}
+                          onChange={(e) => setCommentText(e.target.value)}
+                          placeholder='Write comment...'
+                        />
+                          <button className="SaveComment" onClick={() => handleSaveComment(task.taskName, user)}>Save</button>
+                      </div>
+                    )} 
 
-                  {activeMenu === task.taskName &&
-                    <div>
-                      {comments.filter((c) => c.taskName === task.taskName)
-                      .map((comment, index) => (
-                        <div key={index}>
-                          <div>{comment.text}</div>
-                          <div>- {team.display[comment.user] || comment.user} -</div>
-                        </div>
-                      ))}
-                    </div> 
-                  }      
-                            
-                </div>
-            )}
+                    {activeMenu === task.taskName &&
+                      <div className="CommentBox">
+                        {comments.filter((c) => c.taskName === task.taskName)
+                        .map((comment, index) => (
+                          <div key={index} className="CommentDisplay">
+                            <div>{comment.text}</div>
+                            <div>- {team.display[comment.user] || comment.user} -</div>
+                          </div>
+                        ))}
+                      </div> 
+                    }      
+                              
+                  </div>
+              )}
+            </div>
             {showList && currentOpen === task.taskName && (<><div></div><div></div><div></div><div></div>
               <div>
                 {team.members.map((member, index) => (
