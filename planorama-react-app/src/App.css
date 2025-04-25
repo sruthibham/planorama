@@ -58,6 +58,15 @@ body {
   border: 1px solid #ccc;
 }
 
+.CompletedTable {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  text-align: center;
+  width:90%;
+  margin:auto;
+  border: 1px solid #ccc;
+}
+
 .TaskTable {
   display: flex;
   flex-direction: column;

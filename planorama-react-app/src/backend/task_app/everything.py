@@ -1207,7 +1207,7 @@ class Teams(db.Model):
     members = db.Column(db.Text, nullable=True)
     recipients = db.Column(db.Text, nullable=True)
     tasks = db.Column(db.Text, nullable=True)
-
+    completed = db.Column(db.Text, nullable=True)
     displayNames = db.Column(db.Text, nullable=True)
 
     def get_display_name(self):
@@ -1240,7 +1240,56 @@ class Teams(db.Model):
             db.session.rollback()
             return jsonify({"error", "failed to set display name", "message"}), 500
 
-    
+    def get_completed(self):
+        return json.loads(self.completed) if self.completed else []
+
+    def complete_task(self, task_name):
+        try:
+            tasks = self.get_tasks()
+            completed = self.get_completed()
+
+            # Find the task to complete
+            task_to_complete = None
+            for task in tasks:
+                if task['taskName'] == task_name:
+                    task_to_complete = task
+                    break
+
+            if task_to_complete:
+                tasks = [task for task in tasks if task['taskName'] != task_name]
+                completed.append(task_to_complete)
+
+                self.tasks = json.dumps(tasks) if tasks else None
+                self.completed = json.dumps(completed)
+                db.session.commit()
+        except Exception as e:
+            db.session.rollback()
+            print("Error in completing task:", e)
+            return jsonify({"error": "Failed to complete task", "message": str(e)}), 500
+
+    def reopen_task(self, task_name):
+        try:
+            tasks = self.get_tasks()
+            completed = self.get_completed()
+
+            # Find the task to reopen
+            task_to_reopen = None
+            for task in completed:
+                if task['taskName'] == task_name:
+                    task_to_reopen = task
+                    break
+
+            if task_to_reopen:
+                completed = [task for task in completed if task['taskName'] != task_name]
+                tasks.append(task_to_reopen)
+
+                self.completed = json.dumps(completed) if completed else None
+                self.tasks = json.dumps(tasks)
+                db.session.commit()
+        except Exception as e:
+            db.session.rollback()
+            print("Error in reopening task:", e)
+            return jsonify({"error": "Failed to reopen task", "message": str(e)}), 500
 
     def get_members(self):
         return json.loads(self.members) if self.members else []
@@ -1295,6 +1344,12 @@ class Teams(db.Model):
         updated_tasks = [task for task in tasks if task['taskName'] != task_name]
         self.tasks = json.dumps(updated_tasks) if updated_tasks else None
         db.session.commit()
+    
+    def remove_completed(self, task_name):
+        completed_tasks = self.get_completed()
+        updated_completed = [task for task in completed_tasks if task['taskName'] != task_name]
+        self.completed = json.dumps(updated_completed) if updated_completed else None
+        db.session.commit()
 
 with app.app_context():
     db.create_all()
@@ -1328,6 +1383,7 @@ def getTeams():
         "members": team.get_members(),
         "recipients": team.get_recipients(),
         "tasks": team.get_tasks(),
+        "completed": team.get_completed(),
         "display": team.get_display_name()
     } for team in user_teams])
 
@@ -1345,6 +1401,7 @@ def getInvites():
         "members": team.get_members(),
         "recipients": team.get_recipients(),
         "tasks": team.get_tasks(),
+        "completed": team.get_completed(),
         "display": team.get_display_name()
     } for team in user_invites])
 
@@ -1361,6 +1418,7 @@ def getTeamFromID():
         "members": team.get_members(),
         "recipients": team.get_recipients(),
         "tasks": team.get_tasks(),
+        "completed": team.get_completed(),
         "display": team.get_display_name()
     })
 
@@ -1461,10 +1519,13 @@ def createTeamTask():
         return jsonify({"error": "Deadline cannot be in the past."}), 400
     
     existing_tasks = team.get_tasks()
+    existing_completed = team.get_completed()
     for task in existing_tasks:
         if task["taskName"] == taskName:
             return jsonify({"error": "Task with this name already exists."}), 400
-
+    for comp in existing_completed:
+        if comp["taskName"] == taskName:
+            return jsonify({"error": "A task with this name already exists (Completed)."}), 400
     assignee = ""
 
     team.add_task(taskName, assignee, deadline)
@@ -1488,7 +1549,6 @@ def claimTask():
     data = request.get_json()
     teamID = data.get("teamID")
     user = data.get("user")
-    print("AHHHHH", user, "AHHHHH")
     taskName = data.get("taskName")
 
     team = Teams.query.get(teamID)
@@ -1550,6 +1610,62 @@ def resetDisplayName():
     except Exception as e:
         return jsonify({"error", str(e)}), 500
 
+@app.route("/completetask", methods=["POST"])
+def complete_task_route():
+    data = request.get_json()
+    team_id = data.get("teamID")
+    task_name = data.get("taskName")
+
+    team = Teams.query.get(team_id)
+    
+    try:
+        tasks = team.get_tasks()
+        for task in tasks:
+            if task["taskName"] == task_name:
+                if task.get("assignee", "") == "":
+                    task["assignee"] = currentUser
+                break
+        team.tasks = json.dumps(tasks)
+
+        team.complete_task(task_name)
+        return jsonify({"message": f"Task '{task_name}' marked as completed"}), 200
+    except Exception as e:
+        return jsonify({"error": "Failed to complete task", "message": str(e)}), 500
+
+
+@app.route("/reopentask", methods=["POST"])
+def reopen_task_route():
+    data = request.get_json()
+    team_id = data.get("teamID")
+    task_name = data.get("taskName")
+
+    team = Teams.query.get(team_id)
+
+    try:
+        completed_tasks = team.get_completed()
+        for task in completed_tasks:
+            if task["taskName"] == task_name:
+                task["assignee"] = ""  # clear the assignee
+                break
+
+        team.completed = json.dumps(completed_tasks)
+
+        team.reopen_task(task_name)
+        return jsonify({"message": f"Task '{task_name}' moved back to active tasks"}), 200
+    except Exception as e:
+        return jsonify({"error": "Failed to reopen task", "message": str(e)}), 500
+    
+@app.route("/deletecompletedtask", methods=["POST"])
+def deleteCompleted():
+    data = request.get_json()
+    teamID = data.get("teamID")
+    taskName = data.get("taskName")
+
+    team = Teams.query.get(teamID)
+
+    team.remove_completed(taskName)
+
+    return jsonify(team.get_completed())
 
     
 # STREAK.PY ------------------------------------
