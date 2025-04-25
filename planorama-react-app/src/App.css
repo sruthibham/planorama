@@ -749,8 +749,6 @@ button:hover {
   right: 0;
   display: flex;
   justify-content: center;
-  width: 70%;
-  margin: 0 auto;
   padding: 10px;
 
 }

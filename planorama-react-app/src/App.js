@@ -2454,7 +2454,7 @@ const TeamPage = () => {
       </div>
       <div style={{display:'flex'}}>
       <div style={{width:"50%"}}>
-      <h3 className='AddMember' style={{"marginBottom":20}}>Leader: {team.owner}</h3>
+      <h3 className='AddMember' style={{"marginBottom":20}}>Leader: {team.display[team.owner] || team.owner}</h3>
 
       <div className='MemberList'> 
         <h4>Members:    
