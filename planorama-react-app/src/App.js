@@ -2452,10 +2452,14 @@ const TeamPage = () => {
         <h1>- {team.teamName} -</h1>
         <button onClick={() => navigate("/teams")}>Back</button>
       </div>
-      <h3 className='Headers' style={{"marginBottom":20}}>Leader: {team.owner}</h3>
+      <div style={{display:'flex'}}>
+      <div style={{width:"50%"}}>
+      <h3 className='AddMember' style={{"marginBottom":20}}>Leader: {team.owner}</h3>
 
       <div className='MemberList'> 
-        <h4>Members: </h4>
+        <h4>Members:    
+          {user === team.owner && <button onClick={handleOpenSearch} style={{marginBottom: 10, marginLeft:10, padding:5}}>Add member</button>}
+        </h4>
         <ul>
           {team.members.map((member, index) => (
             <div className='SideBySide'>
@@ -2489,9 +2493,6 @@ const TeamPage = () => {
       </div>
 
       <div className='SideBySide'>
-        <div className='AddMember'>      
-          {user === team.owner && <button onClick={handleOpenSearch} style={{marginBottom: 10}}>Add member</button>}
-        </div>
         <div className='AddMember'>
           { user === team.owner && showSearch && (
             <input
@@ -2521,7 +2522,55 @@ const TeamPage = () => {
         </div>
       </div>
 
-      <h2 className='Headers' style={{marginTop:10}}>Tasks<button onClick={()=>setShowModal(true)}>Create Task</button></h2>
+      {showModal && (
+        <div className='modal-overlay'>
+          <div className='modal' style={{width: 300}}>
+            { showError1 && <p>All fields are required</p>}
+            { showError2 && <p>{errorMsg}</p>}
+
+            <div>Task name</div>
+            <input 
+            type="text"
+            placeholder="Name"
+            value={taskName}
+            onChange={(e) => setTaskName(e.target.value)}
+            className="TextFields"></input>
+            <div>Deadline</div>
+            <input 
+            className="TextFields" 
+            type="date" 
+            value={deadline} 
+            onChange={(e) => setDeadline(e.target.value)}></input>
+            <button style={{marginBottom: 5}} onClick={()=>{handleCreate()}}>Save</button>
+            <button onClick={()=>{setShowModal(false); setTaskName(""); setDeadline(""); setShowError1(false); setShowError2(false)}}>Cancel</button>
+          </div>
+        </div>
+      )}
+      
+
+      { user !== team.owner && (
+        <div className='AddMember'>      
+          <button style={{"marginTop":20, backgroundColor: "red"}} onClick={handleLeave}>Leave Team</button>
+        </div>
+      )}
+      { user === team.owner && (
+        <div className='DTButton'>      
+          <button style={{"marginTop":20, backgroundColor: "red"}} onClick={handleOpenConfirm}>Delete Team</button>
+        </div>
+      )}
+      { user === team.owner && showConfirm && (
+        <div>
+          <p className='AddMember' style={{"marginTop":20}}>Are you sure? Team will be deleted for all members.</p>
+          <div className='AddMember'>
+            <button style={{"marginTop":10, backgroundColor:"red"}} onClick={handleDelete}>Confirm</button>
+            <button style={{"marginLeft":10, marginTop:10}} onClick={handleOpenConfirm}>Cancel</button>
+          </div>
+        </div>
+      )}
+
+    </div>
+    <div style={{width:"80%"}}>
+    <h2 className='Headers' style={{marginTop:10}}>Tasks<button onClick={()=>setShowModal(true)}>Create Task</button></h2>
       <div className='Columns' style={{marginTop:10, backgroundColor:"lightgrey"}}>
         <h4>Mark as Complete</h4>
         <h3>Task</h3>
@@ -2590,7 +2639,7 @@ const TeamPage = () => {
 
           </div>
         ))}
-        <h2 className='Headers' style={{marginTop:10, justifyContent:'left'}}>Completed<button style={{marginLeft:10, width:30, height:30, padding:0}} onClick={handleExpand}>{showCompleted===true ? "▲" : "▼"}</button></h2>
+        <h2 className='Headers' style={{marginTop:30, justifyContent:'left'}}>Completed<button style={{marginLeft:10, width:30, height:30, padding:0}} onClick={handleExpand}>{showCompleted===true ? "▲" : "▼"}</button></h2>
 
         { showCompleted && (<>
           <div className='Columns' style={{marginTop:10, backgroundColor:"lightgrey"}}>
@@ -2618,52 +2667,8 @@ const TeamPage = () => {
         
 
       </div>
-
-      {showModal && (
-        <div className='modal-overlay'>
-          <div className='modal' style={{width: 300}}>
-            { showError1 && <p>All fields are required</p>}
-            { showError2 && <p>{errorMsg}</p>}
-
-            <div>Task name</div>
-            <input 
-            type="text"
-            placeholder="Name"
-            value={taskName}
-            onChange={(e) => setTaskName(e.target.value)}
-            className="TextFields"></input>
-            <div>Deadline</div>
-            <input 
-            className="TextFields" 
-            type="date" 
-            value={deadline} 
-            onChange={(e) => setDeadline(e.target.value)}></input>
-            <button style={{marginBottom: 5}} onClick={()=>{handleCreate()}}>Save</button>
-            <button onClick={()=>{setShowModal(false); setTaskName(""); setDeadline(""); setShowError1(false); setShowError2(false)}}>Cancel</button>
-          </div>
-        </div>
-      )}
-      
-
-      { user !== team.owner && (
-        <div className='AddMember'>      
-          <button style={{"marginTop":20, backgroundColor: "red"}} onClick={handleLeave}>Leave Team</button>
-        </div>
-      )}
-      { user === team.owner && (
-        <div className='AddMember'>      
-          <button style={{"marginTop":20, backgroundColor: "red"}} onClick={handleOpenConfirm}>Delete Team</button>
-        </div>
-      )}
-      { user === team.owner && showConfirm && (
-        <div>
-          <p className='AddMember' style={{"marginTop":20}}>Are you sure? Team will be deleted for all members.</p>
-          <div className='AddMember'>
-            <button style={{"marginTop":10, backgroundColor:"red"}} onClick={handleDelete}>Confirm</button>
-            <button style={{"marginLeft":10, marginTop:10}} onClick={handleOpenConfirm}>Cancel</button>
-          </div>
-        </div>
-      )}
+    </div>
+    </div>
     </div>
   );
 }

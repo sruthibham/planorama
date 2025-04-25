@@ -717,7 +717,7 @@ button:hover {
 .MemberList {
   display: flex;
   flex-direction: column;
-  width: 90%;
+  width: 70%;
   margin: auto;
 }
 
@@ -738,8 +738,21 @@ button:hover {
 
 .AddMember {
   display: flex;
-  width: 90%;
+  width: 70%;
   margin: auto;
+}
+
+.DTButton {
+  position: fixed;
+  bottom: 20px;
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: center;
+  width: 70%;
+  margin: 0 auto;
+  padding: 10px;
+
 }
 
 .centered {
