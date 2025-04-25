@@ -1073,6 +1073,9 @@ class User(db.Model):
     profile_picture = db.Column(db.String(100), nullable=True)
     achievements = db.Column(db.String(255), nullable=True)
 
+    auto_rollover_enabled = db.Column(db.Boolean, default=False)
+    auto_rollover_time = db.Column(db.String(5), default="00:00")
+
     def __repr__(self):
         return f"<User {self.username}>"
     
@@ -1145,6 +1148,38 @@ def update_profile():
     else:
         return jsonify({'error': 'User not found'}), 404
 
+
+@app.route('/get_auto_rollover', methods=['GET'])
+def get_auto_rollover():
+    global currentUser
+    user = User.query.filter_by(username=currentUser).first()
+    if user:
+        return jsonify({
+            'username': user.username,
+            'auto_rollover_enabled': user.auto_rollover_enabled,
+            'auto_rollover_time': user.auto_rollover_time,
+        })
+    return jsonify({'error': 'User not found'}), 404
+
+@app.route('/update_auto_rollover', methods=['PUT'])
+def update_auto_rollover():
+    global currentUser
+    user = User.query.filter_by(username=currentUser).first()
+    data = request.json
+
+    if not user:
+        return jsonify({'error': 'User not found'}), 404
+    
+    if "auto_rollover_enabled" in data:
+        user.auto_rollover_enabled = data['auto_rollover_enabled']
+
+    if "auto_rollover_time" in data:
+        user.auto_rollover_time = data['auto_rollover_time']
+        
+
+    db.session.commit()
+    return jsonify({'message': 'Auto rollover enabled and time successfuly saved'})
+        
 
 # SETTINGS.PY ------------------------------------
 

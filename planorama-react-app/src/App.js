@@ -342,7 +342,7 @@ function TaskPage() {
   const [timeModalTask, setTimeModalTask] = useState(null);
   const [filterTimePerformance, setFilterTimePerformance] = useState("None");
   const [autoRollOverEnabled, setAutoRollOverEnabled] = useState(false);
-  const [autoRollOverTime, setAutoRollOverTime] = useState("8:00");
+  const [autoRollOverTime, setAutoRollOverTime] = useState("00:00");
 
   const COLORS = [
     { name: "red", value: "#fbb9c5" },
@@ -403,6 +403,18 @@ function TaskPage() {
     return () => clearInterval(interval);
   }, [autoRollOverEnabled, autoRollOverTime])
 
+  useEffect(() => {
+    const interval = setInterval(() => {
+      axios.get(`http://127.0.0.1:5000/get_auto_rollover`)
+      .then(response => {
+        setAutoRollOverEnabled(response.data.auto_rollover_enabled);
+        setAutoRollOverTime(response.data.auto_rollover_time);
+      })
+      .catch(err => console.error("Error with rollover stuff:", err));
+    }, 60000)
+    return () => clearInterval(interval);
+  }, [])
+
   const refreshNotifications = () => {
     if (!notificationsEnabled || user === "Guest") return;
     axios.get(`http://127.0.0.1:5000/notifications?username=${user}`)
@@ -413,6 +425,28 @@ function TaskPage() {
       })
       .catch(err => console.error("Error refreshing notifications:", err));
   };
+
+  const handleRollOverEnabledChange = (e) => {
+    const isEnabled = e.target.checked;
+    setAutoRollOverEnabled(isEnabled);
+
+    axios.put(`http://127.0.0.1:5000/update_auto_rollover`, {
+      auto_rollover_enabled: isEnabled,
+      auto_rollover_time: autoRollOverTime
+    })
+    .catch(err => console.error("Error updating roll over enabled", err));
+  }
+
+  const handleRollOverTimeChange = (e) => {
+    const newTime = e.target.value;
+    setAutoRollOverTime(newTime);
+
+    axios.put(`http://127.0.0.1:5000/update_auto_rollover`, {
+      auto_rollover_enabled: autoRollOverEnabled,
+      auto_rollover_time: newTime
+    })
+    .catch(err => console.error("Error updating roll over time", err));
+  }
 
   const handleAddSubtask = () => {
     if (!newSubtaskName.trim()) return;
@@ -1178,7 +1212,7 @@ function TaskPage() {
               <input
                 type="checkbox"
                 checked={autoRollOverEnabled}
-                onChange={(e) => setAutoRollOverEnabled(e.target.checked)}
+                onChange={handleRollOverEnabledChange/*(e) => setAutoRollOverEnabled(e.target.checked)*/}
               />
               
 
@@ -1186,8 +1220,8 @@ function TaskPage() {
                 <label>
                   <input
                   type="time"
-                  checked={autoRollOverTime}
-                  onChange={(e) => setAutoRollOverTime(e.target.checked)}
+                  value={autoRollOverTime}
+                  onChange={handleRollOverTimeChange} /*(e) => setAutoRollOverTime(e.target.checked)*/
                   />
 
                   Time:
