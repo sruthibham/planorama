@@ -542,6 +542,7 @@ function TaskPage() {
         setPendingDelete(null); // restore Edit and Delete buttons
         setWarning("");
         setError("");
+        refreshNotifications();
       })
       .catch(error => {
         const msg = error.response?.data?.error || "Error deleting task.";
