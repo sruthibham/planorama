@@ -2345,6 +2345,39 @@ const TeamPage = () => {
     }
   }, [user, navigate]);
 
+  useEffect(() => {
+
+    const loadInitialData = () => {
+      if (teamID) {
+        axios.get(`http://127.0.0.1:5000/get_comment?teamID=${teamID}`)
+        .then(response => {
+          console.log("Comments received:", response.data.comments)
+          setComments(response.data.comments);
+        })
+        .catch(error => console.error("Error loading comments:", error));
+      }
+    };
+
+    loadInitialData();
+  }, [teamID])
+
+  const handleSaveComment = (taskName, currentUser) => {
+    
+    axios.post(`http://127.0.0.1:5000/add_comment`, {
+      teamID: teamID,
+      taskName: taskName,
+      username: currentUser,
+      commentText: commentText
+    })
+    .then(response => {
+      console.log("Comment saved:", response.data);
+      setComments(response.data.comments);
+      setCommentText("");
+      setActiveComment(null);
+    })
+    .catch(err => {console.error("Error saving comment:", err)});
+  }
+
   const handleOpenConfirm = () => {
     if (showConfirm) {
       setShowConfirm(false);
@@ -2514,6 +2547,7 @@ const TeamPage = () => {
     }
   }
 
+  /*
   const handleSaveComment = (taskName, currentUser) => {
     
     const newComment = {
@@ -2526,12 +2560,21 @@ const TeamPage = () => {
     setCommentText("");
     setActiveComment(null);
   }
+    */
 
   const handleMenuClick = (taskName) => {
     if (activeMenu === taskName) {
       setActiveMenu(null);
     } else {
       setActiveMenu(taskName);
+    }
+
+    if (teamID) {
+      axios.get(`http://127.0.0.1:5000/get_comment?teamID=${teamID}`)
+      .then(response => {
+        setComments(response.data.comments || []);
+      })
+      .catch(error => console.error("Error refreshing comments:", error));
     }
   }
 
@@ -2733,17 +2776,21 @@ const TeamPage = () => {
                     </div>
                   )} 
 
-                  <button onClick={() => handleMenuClick(task.taskName)}>:</button>
+                  <button className="SeeComments" onClick={() => handleMenuClick(task.taskName)}>:</button>
 
                   {activeMenu === task.taskName &&
                     <div>
-                      {comments.filter((c) => c.taskName === task.taskName)
-                      .map((c, index) => (
-                        <div key={index}>
-                          <div>{c.text}</div>
-                          <div>- {team.display[c.user] || c.user} -</div>
-                        </div>
-                      ))}
+                      {comments && comments.length > 0 ?
+                        comments.filter((c) => c.taskName === task.taskName)
+                        .map((comment, index) => (
+                          <div key={index}>
+                            <div>{comment.text}</div>
+                            <div>- {team.display[comment.user] || comment.user} -</div>
+                          </div>
+                        ))
+                        :
+                        <div>No comments yet</div>
+                      }
                     </div> 
                   }      
                             
@@ -2751,6 +2798,37 @@ const TeamPage = () => {
             )}
             {user !== team.owner && task.assignee === "" && <button className="Invite" style={{margin:"auto", width: 58, height: 30}} onClick={() => handleClaim(task.taskName, user)}>Claim</button>}
             {user !== team.owner && task.assignee === user && <button className="Invite" style={{margin:"auto", width: 64, height: 30}} onClick={() => handleClaim(task.taskName, user)}>Unclaim</button>}
+            {user !== team.owner && (
+                <div style={{display:'flex', justifySelf:"center", gap:5}}>
+                  <button className="Comment" style={{margin:"auto"}} onClick={() => handleCommentTask(task.taskName)}>Comment</button>
+
+                  {activeComment === task.taskName && (
+                    <div>
+                      <textarea
+                        value={commentText}
+                        onChange={(e) => setCommentText(e.target.value)}
+                        placeholder='Write comment...'
+                      />
+                        <button className="SaveComment" onClick={() => handleSaveComment(task.taskName, user)}>Save</button>
+                    </div>
+                  )} 
+
+                  <button className="SeeComments" onClick={() => handleMenuClick(task.taskName)}>:</button>
+
+                  {activeMenu === task.taskName &&
+                    <div>
+                      {comments.filter((c) => c.taskName === task.taskName)
+                      .map((comment, index) => (
+                        <div key={index}>
+                          <div>{comment.text}</div>
+                          <div>- {team.display[comment.user] || comment.user} -</div>
+                        </div>
+                      ))}
+                    </div> 
+                  }      
+                            
+                </div>
+            )}
             {showList && currentOpen === task.taskName && (<><div></div><div></div><div></div><div></div>
               <div>
                 {team.members.map((member, index) => (

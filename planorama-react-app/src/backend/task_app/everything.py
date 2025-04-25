@@ -1245,6 +1245,30 @@ class Teams(db.Model):
     tasks = db.Column(db.Text, nullable=True)
     completed = db.Column(db.Text, nullable=True)
     displayNames = db.Column(db.Text, nullable=True)
+    comments = db.Column(db.Text, nullable=True)
+
+    def get_comments(self):
+        return json.loads(self.comments) if self.comments else []
+
+    def add_comment(self, task_name, username, comment_text):
+        try:
+            comments = self.get_comments()
+
+            new_comment = {
+                "taskName": task_name,
+                "user": username,
+                "text": comment_text
+            }
+
+            comments.append(new_comment)
+            self.comments = json.dumps(comments)
+            db.session.commit()
+            return True
+        except Exception as e:
+            print(f"error adding comment: {e}")
+            db.session.rollback()
+            return False
+
 
     def get_display_name(self):
         return json.loads(self.displayNames) if self.displayNames else {}
@@ -1420,7 +1444,8 @@ def getTeams():
         "recipients": team.get_recipients(),
         "tasks": team.get_tasks(),
         "completed": team.get_completed(),
-        "display": team.get_display_name()
+        "display": team.get_display_name(),
+        "comments": team.get_comments()
     } for team in user_teams])
 
 # Get all teams that user has an invite to
@@ -1438,7 +1463,8 @@ def getInvites():
         "recipients": team.get_recipients(),
         "tasks": team.get_tasks(),
         "completed": team.get_completed(),
-        "display": team.get_display_name()
+        "display": team.get_display_name(),
+        "comments": team.get_comments()
     } for team in user_invites])
 
 # Get the information of a team based on ID
@@ -1455,7 +1481,8 @@ def getTeamFromID():
         "recipients": team.get_recipients(),
         "tasks": team.get_tasks(),
         "completed": team.get_completed(),
-        "display": team.get_display_name()
+        "display": team.get_display_name(),
+        "comments": team.get_comments()
     })
 
 # Get profile information based on username
@@ -1645,6 +1672,39 @@ def resetDisplayName():
             return jsonify({"error": "Failed to display name"})
     except Exception as e:
         return jsonify({"error", str(e)}), 500
+
+@app.route("/add_comment", methods=["POST"])
+def add_comment():
+    data = request.get_json()
+    teamID = data.get("teamID")
+    task_name = data.get("taskName")
+    username = data.get("username")
+    comment_text = data.get("commentText")
+
+    team = Teams.query.get(teamID)
+    
+    if team.add_comment(task_name, username, comment_text):
+        return jsonify({
+            "success": True,
+            "comments": team.get_comments()
+            })
+    else:
+        return jsonify({"error with comment adding", str(e)}), 500
+
+@app.route("/get_comment", methods=["GET"])
+def get_comments():
+    #data = request.get.json()
+    #team_id = data.get("teamID")
+    team_id = request.args.get("teamID")
+
+    team = Teams.query.filter_by(teamID=team_id).first()
+
+    if not team:
+        return jsonify({"error": "error with team in get comment"}), 500
+
+    return jsonify({
+        "comments": team.get_comments()
+    })
 
 @app.route("/completetask", methods=["POST"])
 def complete_task_route():
