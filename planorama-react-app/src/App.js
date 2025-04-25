@@ -295,8 +295,6 @@ function TaskPage() {
   const [autoArchiveEnabled, setAutoArchiveEnabled] = useState(false);
   const [archivePeriod, setArchivePeriod] = useState("weekly");
   const [archiveTime, setArchiveTime] = useState("12:00");
-  const [showTemplateModal, setShowTemplateModal] = useState(false);
-  const [taskTemplates, setTaskTemplates] = useState([]);
   const [scheduledTasks, setScheduledTasks] = useState([]);
   const [showModal, setShowModal] = useState(false);
   const [newSubtaskName, setNewSubtaskName] = useState("");
@@ -343,6 +341,18 @@ function TaskPage() {
   const [filterTimePerformance, setFilterTimePerformance] = useState("None");
   const [autoRollOverEnabled, setAutoRollOverEnabled] = useState(false);
   const [autoRollOverTime, setAutoRollOverTime] = useState("00:00");
+
+  const [showTemplateModal, setShowTemplateModal] = useState(false);
+  const [showTemplateForm, setShowTemplateForm] = useState(false);
+  const [isEditingTemplate, setIsEditingTemplate] = useState(false);
+  const [taskTemplates, setTaskTemplates] = useState([]);
+  const [currentTemplate, setCurrentTemplate] = useState({
+    name: "",
+    description: "",
+    priority: "Medium",
+    estimated_time: "",
+    due_time: ""
+  });
 
   const COLORS = [
     { name: "red", value: "#fbb9c5" },
@@ -618,17 +628,101 @@ function TaskPage() {
     }
   }
 
-  const createTaskFromTemplate = () => {
 
+const addTemplate = () => {
+  const newTemplate = {
+    ...currentTemplate,
+    id: Date.now().toString(),
+  };
+  setTaskTemplates([...taskTemplates, newTemplate]);
+  setShowTemplateForm(false);
+};
+
+const updateTemplate = () => {
+  setTaskTemplates(
+    taskTemplates.map((template) =>
+      template.id === currentTemplate.id ? currentTemplate : template
+    )
+  );
+  setShowTemplateForm(false);
+  setIsEditingTemplate(false);
+};
+
+const deleteTemplate = (templateToDelete) => {
+  if (window.confirm('Are you sure you want to delete this template?')) {
+    setTaskTemplates(
+      taskTemplates.filter((template) => template.id !== templateToDelete.id)
+    );
   }
+};
 
-  const editTemplate = () => {
+const editTemplate = (template) => {
+  setCurrentTemplate(template);
+  setIsEditingTemplate(true);
+  setShowTemplateForm(true);
+};
 
+const createTaskFromTemplate = (template) => {
+  // Create a new task based on your task structure
+  const taskFromTemplate = {
+    username: "", // Set this based on your app's user context
+    name: template.name,
+    description: template.description || "",
+    due_time: template.due_time || "",
+    priority: template.priority || "Medium",
+    color_tag: "",
+    status: "To-Do",
+    start_date: "",
+    time_log: "",
+    subtasks: [],
+    completion_date: "",
+    rollover_count: 0,
+    estimated_time: template.estimated_time || ""
+  };
+
+  // Add the task to your tasks state
+  setTasks([...tasks, { ...taskFromTemplate, id: Date.now().toString() }]);
+  
+  // Show confirmation and close modal
+  alert(`Task "${template.name}" created successfully!`);
+};
+
+const handleTemplateFormSubmit = (e) => {
+  e.preventDefault();
+  if (!currentTemplate.name.trim()) {
+    alert('Template name is required!');
+    return;
   }
-
-  const deleteTemplate = () => {
-
+  
+  if (isEditingTemplate) {
+    updateTemplate();
+  } else {
+    addTemplate();
   }
+};
+
+const handleTemplateInputChange = (e) => {
+  const { name, value } = e.target;
+  setCurrentTemplate({ ...currentTemplate, [name]: value });
+};
+
+const resetTemplateForm = () => {
+  setCurrentTemplate({
+    name: "",
+    description: "",
+    priority: "Medium",
+    estimated_time: "",
+    due_time: ""
+  });
+  setIsEditingTemplate(false);
+};
+
+const openNewTemplateForm = () => {
+  resetTemplateForm();
+  setShowTemplateForm(true);
+};
+
+
 
   //for rolling over
 
@@ -1542,30 +1636,155 @@ function TaskPage() {
           </div>
         )}
 
+        
         <button className="TemplateButton" onClick={() => setShowTemplateModal(true)}>Templates</button>
+
         {showTemplateModal && (
           <div className="Modal">
             <div className="TemplateModalContent">
-              <button onClick={() => setShowTemplateModal(false)} className="CloseArchiveButton">Close</button>
-              <h3>Task Templates</h3>
+              <div className="TemplateModalHeader">
+                <h3>Task Templates</h3>
+                <div className="TemplateModalActions">
+                  <button className="AddTemplateButton" onClick={openNewTemplateForm}>Add Template</button>
+                  <button onClick={() => setShowTemplateModal(false)} className="CloseArchiveButton">Close</button>
+                </div>
+              </div>
 
-              {taskTemplates.length > 0 ? (
-                taskTemplates.map((template) => (
-                  <div key={template.id} className="TemplateCard">
-                    <div className="TemplateInfo">
-                      <strong>{template.name}</strong>
-                      <p>{template.description}</p>
+              <div className="TemplatesList">
+                {taskTemplates.length > 0 ? (
+                  taskTemplates.map((template) => (
+                    <div key={template.id} className="TemplateCard">
+                      <div className="TemplateInfo">
+                        <h4 className="TemplateName">{template.name}</h4>
+                        {template.description && (
+                          <p className="TemplateDescription">{template.description}</p>
+                        )}
+                        
+                        <div className="TemplateDetails">
+                          {template.priority && (
+                            <span className={`PriorityTag ${template.priority.toLowerCase()}`}>
+                              {template.priority}
+                            </span>
+                          )}
+                          
+                          {template.estimated_time && (
+                            <span className="EstimatedTime">
+                              {template.estimated_time} hours
+                            </span>
+                          )}
+                          
+                          {template.due_time && (
+                            <span className="DeadlineTag">
+                              Due: {formatDate(template.due_time)}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                      
+                      <div className="TemplateActions">
+                        <button 
+                          className="CreateTaskButton"
+                          onClick={() => createTaskFromTemplate(template)}
+                        >
+                          Create Task
+                        </button>
+                        <button 
+                          className="EditTemplateButton"
+                          onClick={() => editTemplate(template)}
+                        >
+                          Edit
+                        </button>
+                        <button 
+                          className="DeleteTemplateButton"
+                          onClick={() => deleteTemplate(template)}
+                        >
+                          Delete
+                        </button>
+                      </div>
                     </div>
-                    <div className="TemplateActions">
-                      <button onClick={() => createTaskFromTemplate(template)}>New</button>
-                      <button onClick={() => editTemplate(template)}>Edit</button>
-                      <button onClick={() => deleteTemplate(template)}>Delete</button>
-                    </div>
+                  ))
+                ) : (
+                  <div className="NoTemplates">
+                    <p>No templates yet. Create your first template to get started!</p>
+                    <button onClick={openNewTemplateForm}>Create Template</button>
                   </div>
-                ))
-              ) : (
-                <p>No templates.</p>
-              )}
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {showTemplateForm && (
+          <div className="Modal">
+            <div className="TemplateModalContent">
+              <h3>{isEditingTemplate ? 'Edit Template' : 'Create New Template'}</h3>
+              <form onSubmit={handleTemplateFormSubmit}>
+                <div className="FormGroup">
+                  <label htmlFor="name">Template Name*</label>
+                  <input
+                    id="name"
+                    name="name"
+                    type="text"
+                    value={currentTemplate.name}
+                    onChange={handleTemplateInputChange}
+                    required
+                  />
+                </div>
+                
+                <div className="FormGroup">
+                  <label htmlFor="description">Description</label>
+                  <textarea
+                    id="description"
+                    name="description"
+                    value={currentTemplate.description || ""}
+                    onChange={handleTemplateInputChange}
+                    rows="3"
+                  />
+                </div>
+              
+                <div className="FormGroup">
+                  <label htmlFor="due_time">Default Deadline</label>
+                  <input
+                    id="due_time"
+                    name="due_time"
+                    type="date"
+                    value={currentTemplate.due_time || ""}
+                    onChange={handleTemplateInputChange}
+                  />
+                </div>
+                
+                <div className="FormGroup">
+                  <label htmlFor="priority">Priority</label>
+                  <select
+                    id="priority"
+                    name="priority"
+                    value={currentTemplate.priority || "Medium"}
+                    onChange={handleTemplateInputChange}
+                  >
+                    <option value="Low">Low</option>
+                    <option value="Medium">Medium</option>
+                    <option value="High">High</option>
+                  </select>
+                </div>
+                
+                <div className="FormGroup">
+                  <label htmlFor="estimated_time">Estimated Time (hours)</label>
+                  <input
+                    id="estimated_time"
+                    name="estimated_time"
+                    type="number"
+                    min="0"
+                    step="1"
+                    value={currentTemplate.estimated_time || ""}
+                    onChange={handleTemplateInputChange}
+                  />
+                </div>
+                
+                <div className="FormButtons">
+                  <button type="submit">{isEditingTemplate ? 'Update Template' : 'Create Template'}</button>
+                  <button type="button" onClick={() => setShowTemplateForm(false)}>Cancel</button>
+                </div>
+              </form>
             </div>
           </div>
         )}
@@ -2547,8 +2766,18 @@ const TeamPage = () => {
     }
   }
 
-  const handleDeleteComment = () => {
-    
+  const handleDeleteComment = (taskName, index) => {
+    const updatedComments = comments.filter((c, i) => !(c.taskName === taskName && i === index && c.user === user));
+    setComments(updatedComments);
+    /*
+    axios.delete(`http://127.0.0.1:5000/delete_comment/${commentId}`)
+    .then(() => {
+      setComments(prev => prev.filter(comment => comment.id !== commentId));
+    })
+    .catch(error => {
+      console.error("failed deleting comment:", error);
+    })
+    */
   }
 
   /*
@@ -2795,7 +3024,7 @@ const TeamPage = () => {
                             <div>- {team.display[comment.user] || comment.user} -</div>
 
                             {comment.user === user && (
-                              <button className="DeleteButton" onClick={() => handleDeleteComment(task.taskName, index)}>
+                              <button className="DeleteButton" onClick={() => handleDeleteComment(comment.taskName, comment.index)}>
                                 Delete
                               </button>
                             )}
@@ -2838,6 +3067,13 @@ const TeamPage = () => {
                           <div key={index} className="CommentDisplay">
                             <div>{comment.text}</div>
                             <div>- {team.display[comment.user] || comment.user} -</div>
+                            
+                            {console.log("rendering comment:", comment)}
+                            {comment.user === user && (
+                              <button className="DeleteButton" onClick={() => handleDeleteComment(comment.id)}>
+                                Delete
+                              </button>
+                            )}
                           </div>
                         ))}
                       </div> 
@@ -3217,7 +3453,29 @@ function Notes() {
   //const [notes, setNotes] = useState([]);
 
   const applyFormating = (format) => {
-    console.log(format)
+    const selection = window.getSelection();
+    const range = selection.getRangeAt(0);
+    const selectedText = selection.toString();
+
+    /*
+    if (selectedText) {
+      const span = document.createElement("span");
+      span.style.fontWeight = format === "bold" ? "bold" : "normal";
+      span.style.fontStyle = format === "italics" ? "italic" : "normal";
+      span.style.listStyleType = format === "bullet" ? "disc" : "none";
+      span.textContent = selectedText;
+
+      range.deleteContents();
+      range.insertNode(span);
+    }
+      */
+    if (format === "bold") {
+      document.execCommand("bold");
+    } else if (format === "italics") {
+      document.execCommand("italic");
+    } else if (format === "bullet") {
+      document.execCommand("insertUnorderedList");
+    }
   }
 
 
@@ -3234,12 +3492,25 @@ function Notes() {
             <button className="BulletButton" onClick={() => applyFormating("bullet")}>Bullet</button>
             <button className="ItalicsButton" onClick={() => applyFormating("italics")}>Italics</button>
 
+
+            <div
+            contentEditable={true} 
+            
+            suppressContentEditableWarning={true}
+            className="NotesEditor"
+            style={{ minHeight: "150px", border: "1px solid #ccc", padding: "10px", drection: "ltr"}}
+            placeholder="Put notes here..."
+            dangerouslySetInnerHTML={{ __html: edit }}
+            onInput={(e) => setEdit(e.target.innerHTML)}
+            />
+            {
             <textarea
               value={edit}
               onChange={(e) => setEdit(e.target.value)}
               placeholder="Put notes here..."
               rows={5}
             />
+            }
 
 
           </div>
@@ -3250,54 +3521,6 @@ function Notes() {
 
 }
 
-function rollOver() {
-
-  //for rolling over
-
-  // const[originalRollColors, setOriginalRollColors] = useState(new Map());
-
-  // const isOverdue = (deadline) => {
-  //   const now = new Date();
-  //   const due = new Date(deadline);
-  //   return now > due;
-  // }
-
-  // const handleRollOver = (taskId) => {
-
-  //   setTasks((prevTasks) =>
-  //     prevTasks.map((task) => {
-  //       if (task.id === taskId) {
-  //         if (!originalRollColors.has(taskId)) {
-  //           setOriginalRollColors((prev) => prev.set(task.id, task.color_tag));
-  //           return {
-  //             ...task,
-  //             color_tag: "#FFE5E5",
-  //           };
-  //         } else {
-
-  //           const originalColor = originalRollColors.get(task.id);
-  //           return {
-  //             ...task,
-  //             color_tag: originalColor,
-  //           };
-  //         }
-  //       }
-  //       return task;
-  //     })
-  //   );
-  // }
-
-  // const overDue = isOverdue(task.deadline)
-
-  // return (
-  //   <div>
-  //     {/* {overdue && (
-  //       <button onClick={handleRollOver}>Roll Over</button>
-  //     )} */}
-  //   </div>
-  // )
-
-}
 
 function ArchivePage() {
   
