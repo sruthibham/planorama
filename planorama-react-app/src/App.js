@@ -2846,11 +2846,11 @@ const TeamPage = () => {
                   </div>
               )}
             </div>
-            {showList && currentOpen === task.taskName && (<><div></div><div></div><div></div><div></div>
+            {showList && currentOpen === task.taskName && (<><div></div><div></div><div></div>
               <div>
                 {team.members.map((member, index) => (
                   <div key={index} className="Column">
-                    <div className="user-row">
+                    <div className="user-row" style={{width:200}}>
                       {team.display[member] || member}
                       <button className='Invite' style={{width:60}} onClick={() => {handleClaim(task.taskName, member); handleList(task.taskName)}}>Choose</button>
                     </div>
