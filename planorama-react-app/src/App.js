@@ -340,6 +340,8 @@ function TaskPage() {
   const [draggingTaskId, setDraggingTaskId] = useState(null);
   const [timeModalTask, setTimeModalTask] = useState(null);
   const [filterTimePerformance, setFilterTimePerformance] = useState("None");
+  const [autoRollOverEnabled, setAutoRollOverEnabled] = useState(false);
+  const [autoRollOverTime, setAutoRollOverTime] = useState("8:00");
 
   const COLORS = [
     { name: "red", value: "#fbb9c5" },
@@ -392,6 +394,13 @@ function TaskPage() {
     document.addEventListener("click", handleClickOutside);
     return () => document.removeEventListener("click", handleClickOutside);
   }, []);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      autoRollOverTasks();
+    }, 60000)
+    return () => clearInterval(interval);
+  }, [autoRollOverEnabled, autoRollOverTime])
 
   const refreshNotifications = () => {
     if (!notificationsEnabled || user === "Guest") return;
@@ -591,14 +600,10 @@ function TaskPage() {
   const[originalRollColors, setOriginalRollColors] = useState(new Map());
 
   const isOverdue = (deadline) => {
-    console.log("Deadline for task:", deadline)
     const[year, month, day] = deadline.split('-').map(Number);
     //subtract 1 because months start at 0
     const due = new Date(year, month - 1, day);
     const now = new Date();
-
-    console.log("New now deadline:", now);
-    console.log("due deadline:", due);
 
     now.setHours(0, 0, 0, 0);
     due.setHours(0, 0, 0, 0);
@@ -610,13 +615,82 @@ function TaskPage() {
     setTasks((prevTasks) =>
       prevTasks.map((task) => {
         if (task.id === taskId) {
-          const newDate = new Date(task.due_time);
-          newDate.setDate(newDate.getDate() + 1);
-          return {
+          const today = new Date();
+          const tomorrow = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1)
+
+          console.log("today:", today.toISOString().split('T')[0])
+          console.log("tomorrow", tomorrow.toISOString().split('T')[0])
+
+          const updatedTask = {
             ...task,
-            due_time: newDate.toISOString().split('T')[0],
+            due_time: tomorrow.toISOString().split('T')[0],
             rollover_count: task.rollover_count + 1,
           }
+
+          axios.put(`http://127.0.0.1:5000/tasks/${updatedTask.id}`, {
+            username: user,
+            name: updatedTask.name,
+            due_time: updatedTask.due_time,
+            rollover_count: updatedTask.rollover_count,
+          })
+          .then(response => {
+            //updatedTask = response.data.task;
+          })
+          .catch(error => {
+            if (error.response) {
+              setError(error.response.data.error);
+            } else {
+              console.error("Error updating roll over task:", error);
+            }
+          });
+          return updatedTask;
+        }
+        return task;
+      })
+    );
+  }
+
+  const autoRollOverTasks = (taskId) => {
+
+    const today = new Date();
+    const time = today.toTimeString().slice(0, 5);
+
+    if (!autoRollOverEnabled || time < autoRollOverTime) {
+      return;
+    }
+
+    setTasks((prevTasks) =>
+      prevTasks.map((task) => {
+        if (isOverdue(task.due_time)) {
+          const tomorrow = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1)
+
+          console.log("today:", today.toISOString().split('T')[0])
+          console.log("tomorrow", tomorrow.toISOString().split('T')[0])
+
+          const updatedTask = {
+            ...task,
+            due_time: tomorrow.toISOString().split('T')[0],
+            rollover_count: task.rollover_count + 1,
+          }
+
+          axios.put(`http://127.0.0.1:5000/tasks/${updatedTask.id}`, {
+            username: user,
+            name: updatedTask.name,
+            due_time: updatedTask.due_time,
+            rollover_count: updatedTask.rollover_count,
+          })
+          .then(response => {
+            //updatedTask = response.data.task;
+          })
+          .catch(error => {
+            if (error.response) {
+              setError(error.response.data.error);
+            } else {
+              console.error("Error updating roll over task:", error);
+            }
+          });
+
+          return updatedTask
         }
         return task;
       })
@@ -1117,7 +1191,29 @@ function TaskPage() {
           <div className="TaskCell">Dependencies</div>
           <div className="TaskCell">Make Changes</div>
           <div className="TaskCell">Notes</div>
-          <div className="TaskCell">Roll Over {/*also add the auto button here.*/}</div>
+          <div className="TaskCell">Roll Over {
+            <label>
+              Auto
+              <input
+                type="checkbox"
+                checked={autoRollOverEnabled}
+                onChange={(e) => setAutoRollOverEnabled(e.target.checked)}
+              />
+              
+
+              {autoRollOverEnabled && (
+                <label>
+                  <input
+                  type="time"
+                  checked={autoRollOverTime}
+                  onChange={(e) => setAutoRollOverTime(e.target.checked)}
+                  />
+
+                  Time:
+                </label>
+              )}
+            </label>
+          }</div>
         </div>
 
         {taskWarning && (
@@ -1304,8 +1400,6 @@ function TaskPage() {
                           <div className="TaskCell">{<Notes />}</div>
                           <div className="TaskCell">{
                             <div>
-                              {console.log("True deadline:", task.due_time)}
-                              {console.log("Roll over count:", task.rollover_count)}
                               <span># - {task.rollover_count}</span>
                               {isOverdue(task.due_time) && (
                                 <button onClick={() => handleRollOver(task.id)}>Roll Over</button>

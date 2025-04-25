@@ -468,6 +468,7 @@ def update_task(task_id):
     task.priority = data.get("priority", task.priority)
     task.color_tag = data.get("color_tag", task.color_tag)
     task.estimated_time = data.get('estimated_time', task.estimated_time)
+    task.rollover_count = data.get('rollover_count', task.rollover_count)
 
 
     if "time_logs" in data:
