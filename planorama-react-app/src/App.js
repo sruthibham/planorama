@@ -114,6 +114,39 @@ function TaskLogModal({
 }) {
   const [editingLogId, setEditingLogId] = useState(null);
   const [editLogMinutes, setEditLogMinutes] = useState("");
+  const [breakReminderVisible, setBreakReminderVisible] = useState(false);
+  const [snoozeCount, setSnoozeCount] = useState(0);
+  const [breakThreshold, setBreakThreshold] = useState("120"); // default 120 min
+  const [breakBlocked, setBreakBlocked] = useState(false);
+  const [remainingBreakTime, setRemainingBreakTime] = useState(60); // 1 minute in seconds
+  const [lastBreakEndTime, setLastBreakEndTime] = useState(null);
+
+  useEffect(() => {
+    let interval;
+
+    if (breakBlocked) {
+      interval = setInterval(() => {
+        setRemainingBreakTime(prev => {
+          if (prev <= 1) {
+            clearInterval(interval);
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    }
+
+    return () => clearInterval(interval);
+  }, [breakBlocked]);
+
+  useEffect(() => {
+    if (remainingBreakTime === 0 && breakBlocked) {
+      setBreakBlocked(false);
+      setRemainingBreakTime(60);
+      setBreakReminderVisible(false);
+      setLastBreakEndTime(new Date().toISOString());
+    }
+  }, [remainingBreakTime, breakBlocked]);
 
   const handleEditLog = (logId) => {
     const minutes = parseInt(editLogMinutes);
@@ -204,6 +237,11 @@ function TaskLogModal({
           <button
             className="SubtaskButton SubtaskConfirmButton"
             onClick={() => {
+              if (breakBlocked) {
+                alert(`Break in progress. Please wait ${Math.ceil(remainingBreakTime / 60)} minute(s) before logging more time.`);
+                return;
+              }
+
               const minutes = parseInt(logInput);
               if (isNaN(minutes) || minutes <= 0 || minutes > 1440) {
                 alert("Please enter a time between 1 and 1440 minutes.");
@@ -214,6 +252,14 @@ function TaskLogModal({
                 .post(`http://127.0.0.1:5000/tasks/${task.id}/log_time`, { minutes })
                 .then((res) => {
                   const updatedLogs = res.data.logs;
+                  const now = new Date();
+                  const totalLogged = updatedLogs.reduce((sum, log) => {
+                    const logTime = new Date(log.timestamp);
+                    if (!lastBreakEndTime || logTime >= new Date(lastBreakEndTime)) {
+                      return sum + log.minutes;
+                    }
+                    return sum;
+                  }, 0);
                   setSelectedTaskLogs(updatedLogs);
                   setLogInput("");
                   setTasks((prev) =>
@@ -221,6 +267,11 @@ function TaskLogModal({
                       t.id === task.id ? { ...t, time_logs: updatedLogs } : t
                     )
                   );
+                  if (!breakBlocked && totalLogged >= breakThreshold) {
+                    setBreakReminderVisible(true);
+                  } else {
+                    setBreakReminderVisible(false);
+                  }
                 })
                 .catch((err) => console.error(err));
             }}
@@ -228,6 +279,30 @@ function TaskLogModal({
           >
             Log Time
           </button>
+        </div>
+
+        <div style={{ marginTop: "10px" }}>
+          <label style={{ marginRight: "5px" }}>Set break threshold (min):</label>
+          <input
+            type="text"
+            inputMode="numeric"
+            pattern="[0-9]*"
+            value={String(breakThreshold)}
+            onChange={(e) => {
+              const raw = e.target.value;
+              if (/^\d*$/.test(raw)) {
+                setBreakThreshold(raw === "" ? "" : parseInt(raw));
+              }
+            }}
+            onBlur={() => {
+              if (breakThreshold === "" || isNaN(breakThreshold) || breakThreshold < 10 || breakThreshold > 1440) {
+                setBreakThreshold(120);
+                alert("Please enter a valid number between 10 and 1440.");
+              }
+            }}
+            className="TextFields"
+            style={{ width: "80px" }}
+          />
         </div>
 
         {errorMsg && <p className="ErrorMessage">{errorMsg}</p>}
@@ -239,10 +314,53 @@ function TaskLogModal({
         >
           Close
         </button>
+
+        {breakReminderVisible && (
+          <div className="modal-overlay" onMouseDown={() => {}}>
+            <div className="modal" onMouseDown={e => e.stopPropagation()}>
+              <h3>⏸️ Time for a break!</h3>
+              <p>You’ve been working for {breakThreshold} minutes. Consider taking a short break.</p>
+              <div style={{ display: "flex", gap: "10px", justifyContent: "center" }}>
+                <button
+                  className="Buttons"
+                  onClick={() => {
+                    setBreakReminderVisible(false);
+                    setSnoozeCount(0);
+                    setBreakBlocked(true);
+                  }}
+                >
+                  Accept
+                </button>
+                <button
+                  className="Buttons"
+                  onClick={() => {
+                    if (snoozeCount >= 2) {
+                      setBreakBlocked(true);
+                      alert("You've snoozed too many times. Take a break before logging more time.");
+                    } else {
+                      setBreakReminderVisible(false);
+                      setSnoozeCount(prev => prev + 1);
+                      setTimeout(() => setBreakReminderVisible(true), 15 * 1000);
+                    }
+                  }}
+                >
+                  Snooze
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {breakBlocked && (
+          <div style={{ marginTop: "15px", color: "#b22222", fontWeight: "bold" }}>
+            ⏳ Break in progress. Time left: {Math.floor(remainingBreakTime / 60)}:{("0" + (remainingBreakTime % 60)).slice(-2)}
+          </div>
+        )}
       </div>
     </div>
   );
 }
+
 
 
 /*
