@@ -4444,12 +4444,14 @@ function NavigationButtons() {
           <Button color="inherit" onClick={() => navigate("/gensearch")}>
             Search
           </Button>
+          {/*}
           <Button color="inherit" onClick={() => navigate("/templates")}>
             Templates
           </Button>
           <Button color="inherit" onClick={() => navigate("/archive")}>
             Archive
           </Button>
+          */}
           <Button color="inherit" onClick={() => navigate("/productivity")}>
             Productivity
           </Button>
