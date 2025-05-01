@@ -2969,7 +2969,7 @@ function TeamsPage() {
 
   return (
     <div>
-      <div className="Headers">
+      <div className="Headers" style={{marginTop:35}}>
         <h1>Teams</h1>
         {loggedIn && !showFields && (
           <button className="Button" onClick={handleOpen}>
@@ -3403,7 +3403,7 @@ const TeamPage = () => {
 
   return (
     <div>
-      <div className="Headers">
+      <div className="Headers" style={{marginTop:35}}>
         <h1>- {team.teamName} -</h1>
         <button onClick={() => navigate("/teams")}>Back</button>
       </div>
@@ -4428,7 +4428,7 @@ function NavigationButtons() {
           Planorama
         </Typography>
 
-        <Box sx={{ display: "flex", gap: 1 }}>
+        <Box sx={{ display: "flex", gap: 1}}>
           <Button color="inherit" onClick={() => navigate("/dependencies")}>
             Dependencies
           </Button>
