@@ -70,29 +70,49 @@ body {
 .TaskTable {
   display: flex;
   flex-direction: column;
-  width: 80%;
-  margin: auto;
+  width: 90%;
+  margin: auto;  
+
 }
 
 .TaskRow {
   display: grid;
-  grid-template-columns: 1fr 0.25fr 0.75fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr; /* Mark as Complete, Filter, Color, Task, Priority, Status, Deadline, Estimated Time, Make Changes, Notes, Roll Over */
+  grid-template-columns: 30px 2fr 1fr 1fr 1fr 1.5fr 1.5fr 1.5fr 1.5fr 1fr;
   align-items: center;
   padding: 10px;
-  border-bottom: 1px solid #ccc;
+  margin: 5px;
   text-align: center;
-  border-radius: 10px;
+  border-radius: 5px;
+  background-color: var(--themed-background-color);
 }
 
 .TaskHeader {
   font-weight: bold;
-  /* background-color: #e3f2fd; */
-  background-color: var(--button-background)
+  color: white !important;
+  background-color: var(--themed-background-color)
 }
 
 .TaskCell {
-  padding: 10px;
+  padding: 5px;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: clip;
+  /* color: black; */
+  color: var(--themed-text-color);
 }
+
+.HeaderCell {
+  padding: 5px;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: clip;
+  color: var(--themed-text-color);
+}
+
+.FilterMenuPopup {
+  background-color: var(--themed-background-color);
+}
+
 
 .EditButton {
   padding: 5px 10px;
@@ -520,14 +540,18 @@ body {
 /* Dark Mode */
 [dark-mode="true"] {
   background-color: #1e1e1e;
-  color: #fff;
+  color: white;
+  --themed-background-color: #1e1e1e;
+  --themed-text-color: white;
 }
 /* Regular Theme (Light) */
 /* Default light theme button colors */
 :root {
-  --button-background: #007bff;
-  --button-hover-background: #007bff;
+  --button-background: #3f51b5;
+  --button-hover-background: #767eae;
   --button-text-color: rgb(255, 255, 255);
+  --themed-background-color: #ffffff;
+  --themed-text-color: black;
 }
 
 /* red Theme */

@@ -13,9 +13,9 @@ body {
     --sidebar-background: #f4f4f4;
     --sidebar-text-color: #333333;
     --sidebar-hover-background: #dddddd;
-    --button-background: #007bff;
+    /* --button-background: #3f51b5; */
     --button-text-color: #ffffff;
-    --button-hover-background: #0056b3;
+    /* --button-hover-background: #0056b3; */
 }
 
 .dark-mode {

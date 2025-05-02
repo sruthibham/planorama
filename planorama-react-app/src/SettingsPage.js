@@ -154,6 +154,16 @@ const SettingsPage = () => {
                         </div>
                     </div>
                 );
+            case "logout":
+                return (
+                    <div className={SectionClass}>
+                        <h3>Logout</h3>
+                        <button className="SettingsSaveButton" onClick={() => {
+                            setUser("Guest");
+                            navigate("/");
+                        }}>Logout</button>
+                    </div>
+                );
             default:
                 return null;
         }
@@ -192,9 +202,27 @@ const SettingsPage = () => {
                             )}
                         </div>
                     )}
+
+                    {/* Logout Section */}
+                    {loggedIn && (
+                        <div className="LogoutSection">
+                            <button
+                                className="SettingsSaveButton"
+                                onClick={() => {
+                                    axios.get("http://127.0.0.1:5000/logout").then((response) => {
+                                        setUser(response.data);
+                                        navigate("/");
+                                    });
+                                }}
+                            >
+                                Log Out
+                            </button>
+                        </div>
+                    )}
                     <p>{errMsg}</p>
                 </div>
             </div>
+            
         </div>
     );
 };
